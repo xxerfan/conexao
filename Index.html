@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema MODO SUPREMO — Dashboard Executivo & ERP</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>MODO SUPREMO</h2>
+            <p>Gestão de Emendas & ONGs</p>
+        </div>
+        <nav class="sidebar-menu">
+            <button class="menu-item active" data-target="sec-dashboard">📊 Painel Consolidado</button>
+            <button class="menu-item" data-target="sec-metas">🎯 Execução de Metas</button>
+            <button class="menu-item" data-target="sec-financeiro">💰 Livro Caixa (Ledger)</button>
+            <button class="menu-item" data-target="sec-instituicoes">🏢 Instituições Beneficiárias</button>
+            <button class="menu-item" data-target="sec-emendas">📑 Cadastro de Emendas</button>
+            <button class="menu-item" data-target="sec-profissionais">👥 Equipe & Profissionais</button>
+            <button class="menu-item" data-target="sec-documentos">📂 Checklist Documental</button>
+            <button class="menu-item" data-target="sec-cadastro">➕ Central de Lançamentos</button>
+        </nav>
+        <div class="sidebar-footer">
+            <p>Xerfan Tech Lab • v3.0 PRO</p>
+        </div>
+    </aside>
+
+    <main class="main-container">
+        
+        <header class="topbar">
+            <div class="topbar-context">
+                <label for="filtro-projeto-global">📁 Selecione o Projeto / Emenda:</label>
+                <select id="filtro-projeto-global">
+                    <option value="TODOS">== VER TODOS OS PROJETOS CONSOLIDADOS ==</option>
+                    </select>
+            </div>
+            <div class="topbar-user">
+                <span class="user-badge">Fomento Federal & MROSC</span>
+            </div>
+        </header>
+
+        <div class="content-body">
+
+            <section id="sec-dashboard" class="page-section active">
+                <div class="section-header">
+                    <h1>Painel Executivo de Indicadores</h1>
+                    <p>Visão de alto nível das métricas orçamentárias e conformidade fiscal.</p>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <span class="kpi-title">Valor Alocado Aprovado</span>
+                        <h2 id="kpi-global" class="kpi-value">R$ 0,00</h2>
+                    </div>
+                    <div class="kpi-card success">
+                        <span class="kpi-title">Total Executado (Pago)</span>
+                        <h2 id="kpi-executado" class="kpi-value">R$ 0,00</h2>
+                    </div>
+                    <div class="kpi-card warning">
+                        <span class="kpi-title">Saldo Orçamentário</span>
+                        <h2 id="kpi-saldo" class="kpi-value">R$ 0,00</h2>
+                    </div>
+                    <div class="kpi-card info">
+                        <span class="kpi-title">Taxa de Execução Geral</span>
+                        <h2 id="kpi-percentual" class="kpi-value">0,00%</h2>
+                    </div>
+                </div>
+
+                <div class="alert-section">
+                    <h3>🛡️ Central de Validações de Integridade e Riscos</h3>
+                    <div id="container-alertas">
+                        </div>
+                </div>
+            </section>
+
+            <section id="sec-metas" class="page-section">
+                <div class="section-header">
+                    <h1>Cronograma de Execução Física e Financeira (Metas)</h1>
+                    <p>Acompanhamento analítico e percentual de progresso de cada etapa pactuada no Plano de Trabalho.</p>
+                </div>
+                <div id="container-metas-detalhado" class="metas-wrapper">
+                    </div>
+            </section>
+
+            <section id="sec-financeiro" class="page-section">
+                <div class="section-header">
+                    <h1>Tabela Mestre de Lançamentos e Movimentações</h1>
+                    <p>Rastreabilidade completa de pagamentos, ordens bancárias (OB) e notas fiscais liquidadas.</p>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID Lçto</th>
+                                <th>Projeto/Emenda</th>
+                                <th>Meta/Etapa</th>
+                                <th>Categoria</th>
+                                <th>Fornecedor / Favorecido</th>
+                                <th>Documento/NF</th>
+                                <th>Data Pagamento</th>
+                                <th>Valor</th>
+                                <th>Workflow</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-financeiro-body">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="sec-instituicoes" class="page-section">
+                <div class="section-header">
+                    <h1>Entidades e Organizações Sociais Cadastradas</h1>
+                    <p>Controle de proponentes e dados institucionais para prestação de contas.</p>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Razão Social</th>
+                                <th>CNPJ</th>
+                                <th>Localização</th>
+                                <th>Banco/Agência/Conta</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-instituicoes-body">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="sec-emendas" class="page-section">
+                <div class="section-header">
+                    <h1>Emendas Parlamentares e Termos de Fomento Ativos</h1>
+                    <p>Identificação de parlamentares, plataformas reguladoras de repasse e vigências.</p>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Instrumento / Convênio</th>
+                                <th>Proponente</th>
+                                <th>Plataforma</th>
+                                <th>Orçamento Global</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-emendas-body">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="sec-profissionais" class="page-section">
+                <div class="section-header">
+                    <h1>Corpo Docente, Técnico e Especialistas Vinculados</h1>
+                    <p>Profissionais contratados para execução direta das metas do plano de trabalho.</p>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome Completo</th>
+                                <th>CPF</th>
+                                <th>Função / Cargo</th>
+                                <th>E-mail / Contato</th>
+                                <th>Projetos Atuantes</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-profissionais-body">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="sec-documentos" class="page-section">
+                <div class="section-header">
+                    <h1>Inventário de Certidões e Regularidade Jurídica</h1>
+                    <p>Monitoramento ativo de validades de documentos obrigatórios exigidos pelo MROSC (Lei 13.019).</p>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Instituição</th>
+                                <th>Tipo de Documento</th>
+                                <th>Número do Registro</th>
+                                <th>Data de Emissão</th>
+                                <th>Data de Validade</th>
+                                <th>Alerta Regularidade</th>
+                                <th>Workflow</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-documentos-body">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="sec-cadastro" class="page-section">
+                <div class="section-header">
+                    <h1>Painel de Lançamento de Dados Rápido</h1>
+                    <p>Grave novas informações diretamente na base unificada na nuvem, extinguindo planilhas offline.</p>
+                </div>
+
+                <div class="forms-container">
+                    
+                    <div class="form-card">
+                        <h3>💰 Lançar Pagamento / Despesa</h3>
+                        <form id="form-novo-gasto">
+                            <div class="form-group">
+                                <label for="form-gasto-projeto">Vincular à Emenda / Termo de Fomento *</label>
+                                <select id="form-gasto-projeto" required></select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="form-gasto-meta">Meta *</label>
+                                    <select id="form-gasto-meta" required>
+                                        <option value="1">Meta 1 - Circuito Cultural</option>
+                                        <option value="2">Meta 2 - Memorial e Exposição</option>
+                                        <option value="3">Meta 3 - Evento Nacional</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="form-gasto-etapa">Etapa *</label>
+                                    <input type="number" id="form-gasto-etapa" min="1" max="21" placeholder="Ex: 2" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="form-gasto-categoria">Categoria Financeira *</label>
+                                <select id="form-gasto-categoria" required>
+                                    <option value="FOLHA DE PAGAMENTO">FOLHA DE PAGAMENTO</option>
+                                    <option value="MATERIAL DE CONSUMO">MATERIAL DE CONSUMO</option>
+                                    <option value="EQUIPAMENTOS PERMANENTES">EQUIPAMENTOS PERMANENTES</option>
+                                    <option value="SERVIÇOS DE TERCEIROS">SERVIÇOS DE TERCEIROS</option>
+                                    <option value="TRIBUTOS E TAXAS">TRIBUTOS E TAXAS</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="form-gasto-fornecedor">Razão Social / Favorecido *</label>
+                                <input type="text" id="form-gasto-fornecedor" placeholder="Ex: GABRIELA A. F. SILVEIRA" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="form-gasto-nf">Número Nota Fiscal (NF) *</label>
+                                    <input type="text" id="form-gasto-nf" placeholder="Ex: NF-1025" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="form-gasto-valor">Valor do Documento (R$) *</label>
+                                    <input type="number" id="form-gasto-valor" step="0.01" min="0.01" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-submit">Gravar Lançamento Financeiro</button>
+                        </form>
+                    </div>
+
+                    <div class="form-card">
+                        <h3>👥 Adicionar Profissional à Equipe</h3>
+                        <form id="form-novo-profissional">
+                            <div class="form-group">
+                                <label for="form-prof-nome">Nome Completo *</label>
+                                <input type="text" id="form-prof-nome" placeholder="Ex: Maria Aparecida Silva" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="form-prof-cpf">CPF *</label>
+                                    <input type="text" id="form-prof-cpf" placeholder="000.000.000-00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="form-prof-funcao">Função Cadastrada *</label>
+                                    <input type="text" id="form-prof-funcao" placeholder="Ex: Coordenadora Geral" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="form-prof-email">E-mail de Contato *</label>
+                                <input type="email" id="form-prof-email" placeholder="nome@organizacao.org.br" required>
+                            </div>
+                            <button type="submit" class="btn-submit btn-gold">Cadastrar Colaborador</button>
+                        </form>
+                    </div>
+
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
