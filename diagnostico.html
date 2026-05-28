@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONG Gestor — Diagnóstico + Importação</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#111827;padding:24px;font-size:14px}
+    h1{font-size:1.3rem;font-weight:700;color:#1a56db;margin-bottom:4px}
+    h2{font-size:1rem;font-weight:600;margin-bottom:12px;color:#1e40af;display:flex;align-items:center;gap:8px}
+    .card{background:#fff;border-radius:10px;padding:20px;margin-bottom:18px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:.83rem;font-weight:500;cursor:pointer;border:none;transition:all .2s}
+    .btn-primary{background:#1a56db;color:#fff}.btn-primary:hover{background:#1e429f}
+    .btn-success{background:#0e9f6e;color:#fff}.btn-success:hover{background:#057a55}
+    .btn-warning{background:#d97706;color:#fff}.btn-warning:hover{background:#b45309}
+    .btn-danger{background:#e02424;color:#fff}.btn-danger:hover{background:#c81e1e}
+    .btn-outline{background:transparent;color:#374151;border:1px solid #e5e7eb}.btn-outline:hover{background:#f8fafc}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-sm{padding:5px 12px;font-size:.78rem}
+    .log-box{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px;font-family:'Courier New',monospace;font-size:.78rem;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6}
+    .log-ok{color:#4ade80}.log-err{color:#f87171}.log-info{color:#60a5fa}.log-warn{color:#fbbf24}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .form-group{margin-bottom:12px}
+    .form-label{display:block;font-size:.78rem;font-weight:500;color:#374151;margin-bottom:5px}
+    .form-control{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:7px;font-size:.82rem}
+    .form-control:focus{outline:none;border-color:#1a56db}
+    .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:.72rem;font-weight:600}
+    .badge-ok{background:#d1fae5;color:#065f46}.badge-err{background:#fee2e2;color:#991b1b}
+    .badge-info{background:#dbeafe;color:#1e40af}.badge-warn{background:#fef3c7;color:#92400e}
+    table{width:100%;border-collapse:collapse;font-size:.8rem}
+    thead th{background:#f8fafc;padding:8px 10px;text-align:left;font-size:.7rem;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    tbody td{padding:8px 10px;border-bottom:1px solid #f3f4f6}
+    tbody tr:hover{background:#fafbfc}
+    .step-grid{display:flex;flex-direction:column;gap:8px}
+    .step-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa}
+    .step-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+    .step-icon.pending{background:#f3f4f6;color:#9ca3af}
+    .step-icon.running{background:#dbeafe;color:#1a56db;animation:spin 1s linear infinite}
+    .step-icon.ok{background:#d1fae5;color:#065f46}
+    .step-icon.err{background:#fee2e2;color:#991b1b}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .tag{display:inline-block;padding:2px 7px;border-radius:5px;font-size:.7rem;background:#f3f4f6;color:#374151;margin:1px}
+    hr{border:none;border-top:1px solid #e5e7eb;margin:14px 0}
+    .progress-bar-wrap{background:#e5e7eb;border-radius:99px;height:8px;margin:8px 0}
+    .progress-bar-fill{height:100%;border-radius:99px;background:#1a56db;transition:width .3s}
+    select.form-control{cursor:pointer}
+    .tabs{display:flex;gap:2px;border-bottom:2px solid #e5e7eb;margin-bottom:16px}
+    .tab-btn{background:none;border:none;padding:8px 18px;font-size:.82rem;font-weight:500;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0}
+    .tab-btn.active{color:#1a56db;border-bottom-color:#1a56db;font-weight:600}
+    .tab-panel{display:none}.tab-panel.active{display:block}
+    .input-group{display:flex;gap:8px;align-items:flex-end}
+    .input-group .form-group{flex:1;margin-bottom:0}
+  </style>
+</head>
+<body>
+
+<div style="max-width:1100px;margin:0 auto;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <div>
+      <h1><i class="fas fa-stethoscope text-primary" style="color:#1a56db;"></i> ONG Gestor — Diagnóstico & Importação</h1>
+      <p style="font-size:.8rem;color:#6b7280;">Teste de conexão, diagnóstico de cadastros e importação de dados</p>
+    </div>
+    <a href="index.html" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar ao Sistema</a>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('diagnostico')"><i class="fas fa-stethoscope"></i> Diagnóstico</button>
+    <button class="tab-btn" onclick="switchTab('importacao')"><i class="fas fa-file-import"></i> Importação de Dados</button>
+    <button class="tab-btn" onclick="switchTab('manual')"><i class="fas fa-plus-circle"></i> Inserção Manual Rápida</button>
+  </div>
+
+  <!-- ═══════════════ TAB: DIAGNÓSTICO ═══════════════ -->
+  <div id="tab-diagnostico" class="tab-panel active">
+
+    <div class="card">
+      <h2><i class="fas fa-plug"></i> Teste de Conexão Supabase</h2>
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="form-group">
+          <label class="form-label">URL Supabase</label>
+          <input type="text" class="form-control" id="diag-url" value="https://twzzchsxuaiashmwozdz.supabase.co/rest/v1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input type="text" class="form-control" id="diag-key" value="sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="runDiagnostico()"><i class="fas fa-play"></i> Rodar Diagnóstico Completo</button>
+        <button class="btn btn-outline" onclick="clearLogs()"><i class="fas fa-eraser"></i> Limpar Logs</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-tasks"></i> Resultados dos Testes</h2>
+      <div class="step-grid" id="step-grid">
+        <div class="step-item" id="step-conn">
+          <div class="step-icon pending" id="step-conn-icon"><i class="fas fa-circle"></i></div>
+          <div><strong>Conexão com Supabase</strong><div style="font-size:.75rem;color:#6b7280;">Verifica se a URL e chave estão corretas</div></div>
+          <span class="badge badge-info" id="step-conn-badge" style="margin-left:auto;">Aguardando</span>
+        </div>
+        <div class="step-item" id="step-tables">
+          <div class="step-icon pending" id="step-tables-icon"><i class="fas fa-circle"></i></div>
+          <div><strong>Tabelas Existem</strong><div style="font-size:.75rem;color:#6b7280;">Verifica as 6 tabelas do sistema</div></div>
+          <span class="badge badge-info" id="step-tables-badge" style="margin-left:auto;">Aguardando</span>
+        </div>
+        <div class="step-item" id="step-insert">
+          <div class="step-icon pending" id="step-insert-icon"><i class="fas fa-circle"></i></div>
+          <div><strong>Inserção (INSERT)</strong><div style="font-size:.75rem;color:#6b7280;">Testa criação de um registro de teste</div></div>
+          <span class="badge badge-info" id="step-insert-badge" style="margin-left:auto;">Aguardando</span>
+        </div>
+        <div class="step-item" id="step-update">
+          <div class="step-icon pending" id="step-update-icon"><i class="fas fa-circle"></i></div>
+          <div><strong>Atualização (UPDATE)</strong><div style="font-size:.75rem;color:#6b7280;">Testa edição do registro criado</div></div>
+          <span class="badge badge-info" id="step-update-badge" style="margin-left:auto;">Aguardando</span>
+        </div>
+        <div class="step-item" id="step-delete">
+          <div class="step-icon pending" id="step-delete-icon"><i class="fas fa-circle"></i></div>
+          <div><strong>Exclusão (DELETE)</strong><div style="font-size:.75rem;color:#6b7280;">Limpa o registro de teste</div></div>
+          <span class="badge badge-info" id="step-delete-badge" style="margin-left:auto;">Aguardando</span>
+        </div>
+        <div class="step-item" id="step-rls">
+          <div class="step-icon pending" id="step-rls-icon"><i class="fas fa-circle"></i></div>
+          <div><strong>Políticas RLS</strong><div style="font-size:.75rem;color:#6b7280;">Verifica se anon tem permissão de escrita</div></div>
+          <span class="badge badge-info" id="step-rls-badge" style="margin-left:auto;">Aguardando</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-terminal"></i> Log Detalhado</h2>
+      <div class="log-box" id="log-box">Clique em "Rodar Diagnóstico Completo" para iniciar os testes...</div>
+    </div>
+
+    <div class="card" id="card-fix" style="display:none;">
+      <h2><i class="fas fa-wrench"></i> Correções Necessárias</h2>
+      <div id="fix-content"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ TAB: IMPORTAÇÃO ═══════════════ -->
+  <div id="tab-importacao" class="tab-panel">
+
+    <div class="card">
+      <h2><i class="fas fa-info-circle"></i> Dados da Planilha — Relação de Pagamentos</h2>
+      <p style="font-size:.82rem;color:#6b7280;margin-bottom:12px;">
+        Dados extraídos da planilha <strong>"Relação de Pagamentos do Termo de Fomento_972600.2024"</strong>.
+        Clique em <strong>Importar Tudo</strong> para inserir todos os dados no Supabase, ou use os botões individuais.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn btn-success" onclick="importarTudo()"><i class="fas fa-file-import"></i> Importar Tudo</button>
+        <button class="btn btn-primary btn-sm" onclick="importarProjeto()"><i class="fas fa-folder"></i> 1. Projeto</button>
+        <button class="btn btn-primary btn-sm" onclick="importarRubricas()"><i class="fas fa-list"></i> 2. Rubricas</button>
+        <button class="btn btn-primary btn-sm" onclick="importarDespesas()"><i class="fas fa-receipt"></i> 3. Despesas</button>
+        <button class="btn btn-warning btn-sm" onclick="limparTodos()"><i class="fas fa-trash"></i> Limpar Todos os Dados</button>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="import-progress" style="width:0%"></div></div>
+      <div id="import-status" style="font-size:.78rem;color:#6b7280;margin-top:6px;"></div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-folder"></i> Projeto a Importar</h2>
+      <table>
+        <thead><tr><th>Campo</th><th>Valor</th></tr></thead>
+        <tbody id="projeto-preview"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-list-check"></i> Rubricas (18 itens)</h2>
+      <div class="table-wrapper" style="overflow-x:auto;">
+        <table id="rubricas-preview">
+          <thead><tr><th>#</th><th>Descrição</th><th>Categoria</th><th>Qtd</th><th>Un</th><th style="text-align:right">Vlr Unit</th><th style="text-align:right">Total Previsto</th><th>Fonte</th></tr></thead>
+          <tbody id="rubricas-preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-receipt"></i> Pagamentos/Despesas (a importar)</h2>
+      <div style="overflow-x:auto;">
+        <table id="despesas-preview">
+          <thead><tr><th>#</th><th>Mês Ref.</th><th>Rubrica</th><th>Descrição</th><th>Fornecedor</th><th>Nº Doc</th><th>Data</th><th>Fonte</th><th style="text-align:right">Valor</th><th>Status</th></tr></thead>
+          <tbody id="despesas-preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-terminal"></i> Log de Importação</h2>
+      <div class="log-box" id="import-log">Aguardando importação...</div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ TAB: INSERÇÃO MANUAL ═══════════════ -->
+  <div id="tab-manual" class="tab-panel">
+
+    <div class="card">
+      <h2><i class="fas fa-folder-plus"></i> Cadastrar Projeto Rápido</h2>
+      <div class="grid2">
+        <div class="form-group">
+          <label class="form-label">Nome do Projeto *</label>
+          <input type="text" class="form-control" id="m-nome" placeholder="Ex: Capacitação em Fitoterapia">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nº Proposta / Convênio</label>
+          <input type="text" class="form-control" id="m-proposta" placeholder="972600.2024">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ONG / Organização</label>
+          <input type="text" class="form-control" id="m-ong" placeholder="Nome da ONG">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CNPJ da ONG</label>
+          <input type="text" class="form-control" id="m-cnpj" placeholder="00.000.000/0001-00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Concedente</label>
+          <input type="text" class="form-control" id="m-concedente" placeholder="Ministério / Secretaria">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modalidade</label>
+          <select class="form-control" id="m-modalidade">
+            <option>Termo de Fomento</option><option>Convênio</option>
+            <option>Termo de Colaboração</option><option>Contrato de Repasse</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor Repasse (R$) *</label>
+          <input type="number" class="form-control" id="m-repasse" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor Contrapartida (R$)</label>
+          <input type="number" class="form-control" id="m-contra" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data Início</label>
+          <input type="date" class="form-control" id="m-inicio">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data Fim</label>
+          <input type="date" class="form-control" id="m-fim">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Município / UF</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="form-control" id="m-municipio" placeholder="Município" style="flex:1;">
+          <input type="text" class="form-control" id="m-uf" placeholder="UF" style="width:60px;" maxlength="2">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Objeto / Descrição</label>
+        <textarea class="form-control" id="m-objeto" rows="3" placeholder="Descreva o objeto do projeto..."></textarea>
+      </div>
+      <button class="btn btn-success" onclick="salvarProjetoManual()"><i class="fas fa-save"></i> Salvar Projeto</button>
+    </div>
+
+    <div class="card" id="card-manual-rubricas" style="display:none;">
+      <h2><i class="fas fa-list-check"></i> Adicionar Rubrica ao Projeto Criado</h2>
+      <div class="grid2">
+        <div class="form-group">
+          <label class="form-label">Descrição *</label>
+          <input type="text" class="form-control" id="r-desc" placeholder="Ex: Coordenador do Projeto">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <select class="form-control" id="r-cat">
+            <option>Recursos Humanos</option><option>Material de Consumo</option>
+            <option>Serviços de Terceiros</option><option>Equipamentos</option>
+            <option>Diárias</option><option>Passagens</option><option>Outros Custos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantidade</label>
+          <input type="number" class="form-control" id="r-qtd" value="1" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unidade</label>
+          <input type="text" class="form-control" id="r-un" placeholder="Mês, Kit, Un...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor Unitário (R$)</label>
+          <input type="number" class="form-control" id="r-vlr" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fonte</label>
+          <select class="form-control" id="r-fonte">
+            <option>Repasse Federal</option><option>Contrapartida</option><option>Mista</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarRubricaManual()"><i class="fas fa-plus"></i> Adicionar Rubrica</button>
+      <div id="rubricas-manuais-lista" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-terminal"></i> Log Manual</h2>
+      <div class="log-box" id="manual-log">Aguardando ações...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONFIGURAÇÃO
+═══════════════════════════════════════════ */
+const SB_URL = () => document.getElementById('diag-url')?.value || 'https://twzzchsxuaiashmwozdz.supabase.co/rest/v1';
+const SB_KEY = () => document.getElementById('diag-key')?.value || 'sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B';
+
+function headers(extra={}) {
+  return {
+    'Content-Type':'application/json',
+    'apikey': SB_KEY(),
+    'Authorization': `Bearer ${SB_KEY()}`,
+    'Prefer': 'return=representation',
+    ...extra
+  };
+}
+
+function genId() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  );
+}
+
+function fmtBRL(v) {
+  return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);
+}
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'importacao') renderPreview();
+}
+
+/* ═══════════════════════════════════════════
+   LOG HELPERS
+═══════════════════════════════════════════ */
+let _logEl = null;
+function log(msg, type='info', targetId='log-box') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const cls = {ok:'log-ok', err:'log-err', info:'log-info', warn:'log-warn'}[type]||'log-info';
+  const ts = new Date().toLocaleTimeString('pt-BR');
+  el.innerHTML += `<span class="${cls}">[${ts}] ${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLogs() {
+  document.getElementById('log-box').innerHTML = '';
+  document.getElementById('import-log').innerHTML = '';
+  resetSteps();
+}
+
+/* ═══════════════════════════════════════════
+   STEPS
+═══════════════════════════════════════════ */
+function setStep(id, state, msg) {
+  const icon  = document.getElementById(`step-${id}-icon`);
+  const badge = document.getElementById(`step-${id}-badge`);
+  if (!icon||!badge) return;
+  const states = {
+    pending: { cls:'pending', i:'fa-circle', bdg:'badge-info',    txt:'Aguardando' },
+    running: { cls:'running', i:'fa-spinner', bdg:'badge-info',   txt:'Rodando...' },
+    ok:      { cls:'ok',      i:'fa-check',   bdg:'badge-ok',     txt:'OK'         },
+    err:     { cls:'err',     i:'fa-times',   bdg:'badge-err',    txt:'FALHOU'     },
+    warn:    { cls:'ok',      i:'fa-exclamation-triangle', bdg:'badge-warn', txt:'Aviso' }
+  };
+  const s = states[state]||states.pending;
+  icon.className  = `step-icon ${s.cls}`;
+  icon.innerHTML  = `<i class="fas ${s.i}"></i>`;
+  badge.className = `badge ${s.bdg}`;
+  badge.textContent = msg || s.txt;
+}
+
+function resetSteps() {
+  ['conn','tables','insert','update','delete','rls'].forEach(id => setStep(id,'pending'));
+}
+
+/* ═══════════════════════════════════════════
+   DIAGNÓSTICO COMPLETO
+═══════════════════════════════════════════ */
+async function runDiagnostico() {
+  clearLogs();
+  document.getElementById('card-fix').style.display = 'none';
+
+  const TABELAS = ['ong_projetos','ong_rubricas','ong_despesas','ong_metas','ong_cronograma','ong_documentos'];
+
+  /* ── STEP 1: Conexão ── */
+  setStep('conn','running');
+  log('🔌 Testando conexão com Supabase...', 'info');
+  try {
+    const r = await fetch(`${SB_URL()}/ong_projetos?select=id&limit=1`, {headers: headers()});
+    if (r.ok) {
+      setStep('conn','ok',`HTTP ${r.status}`);
+      log(`✅ Conexão OK — HTTP ${r.status}`, 'ok');
+    } else {
+      const txt = await r.text();
+      setStep('conn','err',`HTTP ${r.status}`);
+      log(`❌ Conexão falhou — HTTP ${r.status}: ${txt}`, 'err');
+      mostrarFix('conexao', r.status, txt);
+      return;
+    }
+  } catch(e) {
+    setStep('conn','err','Timeout/CORS');
+    log(`❌ Erro de rede: ${e.message}`, 'err');
+    mostrarFix('rede', 0, e.message);
+    return;
+  }
+
+  /* ── STEP 2: Tabelas ── */
+  setStep('tables','running');
+  log('📋 Verificando tabelas...', 'info');
+  const tabelasOk = [];
+  const tabelasFail = [];
+  for (const t of TABELAS) {
+    try {
+      const r = await fetch(`${SB_URL()}/${t}?select=id&limit=1`, {headers: headers()});
+      if (r.ok) {
+        const data = await r.json();
+        tabelasOk.push(t);
+        log(`  ✅ ${t} — OK (${data.length} registros retornados)`, 'ok');
+      } else {
+        const txt = await r.text();
+        tabelasFail.push(t);
+        log(`  ❌ ${t} — HTTP ${r.status}: ${txt}`, 'err');
+      }
+    } catch(e) {
+      tabelasFail.push(t);
+      log(`  ❌ ${t} — ${e.message}`, 'err');
+    }
+  }
+  if (tabelasFail.length === 0) {
+    setStep('tables','ok', `${tabelasOk.length}/6 OK`);
+    log(`✅ Todas as ${tabelasOk.length} tabelas encontradas`, 'ok');
+  } else {
+    setStep('tables','err',`${tabelasFail.length} faltando`);
+    log(`❌ Tabelas ausentes: ${tabelasFail.join(', ')}`, 'err');
+    mostrarFix('tabelas', 0, tabelasFail.join(', '));
+  }
+
+  /* ── STEP 3: INSERT ── */
+  setStep('insert','running');
+  log('📝 Testando INSERT em ong_projetos...', 'info');
+  const testId = genId();
+  const testData = {
+    id: testId,
+    nome_projeto: '_TESTE_DIAGNOSTICO_',
+    numero_proposta: 'TEST-000',
+    status: 'Em Execução',
+    valor_repasse: 1.00,
+    valor_contrapartida: 0,
+    valor_total: 1.00
+  };
+  log(`  Payload: ${JSON.stringify(testData, null, 2)}`, 'info');
+  try {
+    const r = await fetch(`${SB_URL()}/ong_projetos`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(testData)
+    });
+    const txt = await r.text();
+    if (r.ok) {
+      setStep('insert','ok',`HTTP ${r.status}`);
+      log(`✅ INSERT OK — HTTP ${r.status}`, 'ok');
+      log(`  Resposta: ${txt.slice(0,200)}`, 'info');
+    } else {
+      setStep('insert','err',`HTTP ${r.status}`);
+      log(`❌ INSERT FALHOU — HTTP ${r.status}`, 'err');
+      log(`  Erro: ${txt}`, 'err');
+      mostrarFix('insert', r.status, txt);
+    }
+  } catch(e) {
+    setStep('insert','err','Erro');
+    log(`❌ INSERT exception: ${e.message}`, 'err');
+  }
+
+  /* ── STEP 4: UPDATE ── */
+  setStep('update','running');
+  log('✏️ Testando UPDATE...', 'info');
+  try {
+    const r = await fetch(`${SB_URL()}/ong_projetos?id=eq.${testId}`, {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify({nome_projeto: '_TESTE_EDIT_'})
+    });
+    const txt = await r.text();
+    if (r.ok) {
+      setStep('update','ok',`HTTP ${r.status}`);
+      log(`✅ UPDATE OK — HTTP ${r.status}`, 'ok');
+    } else {
+      setStep('update','err',`HTTP ${r.status}`);
+      log(`❌ UPDATE FALHOU: ${txt}`, 'err');
+    }
+  } catch(e) {
+    setStep('update','err','Erro');
+    log(`❌ UPDATE exception: ${e.message}`, 'err');
+  }
+
+  /* ── STEP 5: DELETE ── */
+  setStep('delete','running');
+  log('🗑️ Testando DELETE (limpando registro de teste)...', 'info');
+  try {
+    const r = await fetch(`${SB_URL()}/ong_projetos?id=eq.${testId}`, {
+      method: 'DELETE',
+      headers: headers({'Prefer':'return=minimal'})
+    });
+    if (r.ok || r.status===204) {
+      setStep('delete','ok',`HTTP ${r.status}`);
+      log(`✅ DELETE OK — HTTP ${r.status}`, 'ok');
+    } else {
+      const txt = await r.text();
+      setStep('delete','err',`HTTP ${r.status}`);
+      log(`❌ DELETE FALHOU: ${txt}`, 'err');
+    }
+  } catch(e) {
+    setStep('delete','err','Erro');
+    log(`❌ DELETE exception: ${e.message}`, 'err');
+  }
+
+  /* ── STEP 6: RLS ── */
+  setStep('rls','running');
+  log('🔒 Verificando RLS (tentando inserir sem auth)...', 'info');
+  try {
+    const r = await fetch(`${SB_URL()}/ong_projetos?select=count`, {
+      headers: { 'apikey': SB_KEY(), 'Content-Type':'application/json', 'Prefer':'count=exact' }
+    });
+    if (r.ok) {
+      const count = r.headers.get('content-range');
+      setStep('rls','ok','Leitura OK');
+      log(`✅ RLS OK — leitura funcionando. Content-Range: ${count}`, 'ok');
+    } else {
+      setStep('rls','warn','Verificar');
+      log(`⚠️ RLS retornou ${r.status} — pode haver restrições`, 'warn');
+    }
+  } catch(e) {
+    setStep('rls','warn','Verificar');
+    log(`⚠️ Não foi possível verificar RLS: ${e.message}`, 'warn');
+  }
+
+  log('\n═══════════════════════════════════════', 'info');
+  log('Diagnóstico concluído! Verifique os resultados acima.', 'info');
+}
+
+function mostrarFix(tipo, status, detalhe) {
+  const card = document.getElementById('card-fix');
+  const content = document.getElementById('fix-content');
+  card.style.display = '';
+
+  const fixes = {
+    conexao: {
+      401: `<div class="log-box" style="padding:12px;"><span class="log-err">❌ Chave de API inválida (401 Unauthorized)</span>\n\n<span class="log-info">Solução:</span>\n1. Acesse <a href="https://app.supabase.com" target="_blank">app.supabase.com</a>\n2. Vá em Settings → API\n3. Copie a "anon/public" key\n4. Cole no campo "API Key" acima e rode novamente</div>`,
+      403: `<div class="log-box" style="padding:12px;"><span class="log-err">❌ Permissão negada (403 Forbidden)</span>\n\n<span class="log-info">Solução:</span> Verifique as políticas RLS no painel do Supabase.</div>`
+    },
+    rede: `<div class="log-box" style="padding:12px;"><span class="log-err">❌ Erro de rede/CORS</span>\n\n<span class="log-info">Possíveis causas:</span>\n• Sem acesso à internet\n• URL do Supabase incorreta\n• Projeto Supabase pausado (contas gratuitas pausam após 7 dias sem uso)\n\n<span class="log-info">Solução:</span>\n1. Acesse <a href="https://app.supabase.com" target="_blank">app.supabase.com</a>\n2. Verifique se o projeto está ativo (não pausado)\n3. Se estiver pausado, clique em "Resume Project"</div>`,
+    tabelas: `<div class="log-box" style="padding:12px;"><span class="log-err">❌ Tabelas não encontradas: ${detalhe}</span>\n\n<span class="log-info">Solução:</span>\n1. Abra o <a href="setup.html" target="_blank">Setup do Banco de Dados</a>\n2. Clique em "Executar Setup" para criar as tabelas\n\nOU execute o arquivo <strong>supabase_setup.sql</strong> no painel SQL do Supabase.</div>`,
+    insert: {
+      403: `<div class="log-box" style="padding:12px;"><span class="log-err">❌ INSERT negado (403) — Problema nas políticas RLS</span>\n\n<span class="log-info">Solução — Execute este SQL no painel do Supabase:</span>\n\nGRANT ALL ON ong_projetos TO anon;\nGRANT ALL ON ong_rubricas TO anon;\nGRANT ALL ON ong_despesas TO anon;\nGRANT ALL ON ong_metas TO anon;\nGRANT ALL ON ong_cronograma TO anon;\nGRANT ALL ON ong_documentos TO anon;\n\nCREATE POLICY "anon_all" ON ong_projetos FOR ALL TO anon USING (true) WITH CHECK (true);\n-- (repetir para cada tabela)</div>`,
+      409: `<div class="log-box" style="padding:12px;"><span class="log-err">❌ Conflito (409) — ID duplicado</span>\n\n<span class="log-info">Solução:</span> Isso é normal se o teste já foi rodado antes. Tente novamente — o ID de teste é aleatório.</div>`
+    }
+  };
+
+  let html = '';
+  if (tipo === 'conexao' && fixes.conexao[status]) {
+    html = fixes.conexao[status];
+  } else if (tipo === 'insert' && fixes.insert[status]) {
+    html = fixes.insert[status];
+  } else if (fixes[tipo]) {
+    html = typeof fixes[tipo] === 'string' ? fixes[tipo] : `<div class="log-box" style="padding:12px;"><span class="log-err">Erro ${status}: ${detalhe}</span></div>`;
+  } else {
+    html = `<div class="log-box" style="padding:12px;"><span class="log-err">Erro ${status}: ${detalhe}</span>\n\n<span class="log-warn">Verifique o painel do Supabase para mais detalhes.</span></div>`;
+  }
+  content.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   DADOS DA PLANILHA
+═══════════════════════════════════════════ */
+const PROJETO_ID = genId();
+const RUBRICAS_IDS = Array.from({length:18}, () => genId());
+
+const PROJETO = {
+  id: PROJETO_ID,
+  nome_projeto: 'Fortalecimento do Protagonismo Feminino — Fitoterapia e Geração de Renda',
+  numero_proposta: '972600.2024',
+  modalidade: 'Termo de Fomento',
+  status: 'Em Execução',
+  ong_nome: 'Associação de Desenvolvimento Comunitário',
+  ong_cnpj: '',
+  concedente: 'Ministério da Cidadania',
+  municipio: 'Belém',
+  uf: 'PA',
+  valor_repasse: 287100.00,
+  valor_contrapartida: 0,
+  valor_total: 287100.00,
+  data_inicio: '2024-01-01',
+  data_fim: '2025-12-31',
+  publico_beneficiario: 'Mulheres agricultoras e em vulnerabilidade social',
+  objeto: 'Capacitação em fitoterapia, geração de renda e fortalecimento do protagonismo feminino'
+};
+
+const RUBRICAS = [
+  { id:RUBRICAS_IDS[0],  projeto_id:PROJETO_ID, descricao:'Coordenador(a) do Projeto',                    categoria:'Recursos Humanos',      quantidade:12, unidade:'Mês', valor_unitario:3600.00,  valor_previsto:43200.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[1],  projeto_id:PROJETO_ID, descricao:'Auxiliar Administrativo(a)',                   categoria:'Recursos Humanos',      quantidade:12, unidade:'Mês', valor_unitario:1800.00,  valor_previsto:21600.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[2],  projeto_id:PROJETO_ID, descricao:'Técnico(a) em Fitoterapia / Facilitador(a)',   categoria:'Recursos Humanos',      quantidade:10, unidade:'Mês', valor_unitario:2800.00,  valor_previsto:28000.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[3],  projeto_id:PROJETO_ID, descricao:'Assistente Social',                            categoria:'Recursos Humanos',      quantidade:10, unidade:'Mês', valor_unitario:2500.00,  valor_previsto:25000.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[4],  projeto_id:PROJETO_ID, descricao:'Contador(a) / Prestação de Contas',            categoria:'Serviços de Terceiros', quantidade:12, unidade:'Mês', valor_unitario:1200.00,  valor_previsto:14400.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[5],  projeto_id:PROJETO_ID, descricao:'Material de Consumo (escritório e capacitação)',categoria:'Material de Consumo',   quantidade:1,  unidade:'Vb',  valor_unitario:8500.00,  valor_previsto:8500.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[6],  projeto_id:PROJETO_ID, descricao:'Materiais para Hortas / Insumos Fitoterapia',  categoria:'Material de Consumo',   quantidade:1,  unidade:'Vb',  valor_unitario:12000.00, valor_previsto:12000.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[7],  projeto_id:PROJETO_ID, descricao:'Kits de Ferramentas e EPIs',                   categoria:'Equipamentos',          quantidade:30, unidade:'Kit', valor_unitario:450.00,   valor_previsto:13500.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[8],  projeto_id:PROJETO_ID, descricao:'Equipamentos de Informática (Computador/Impressora)', categoria:'Equipamentos', quantidade:2,  unidade:'Un',  valor_unitario:4500.00,  valor_previsto:9000.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[9],  projeto_id:PROJETO_ID, descricao:'Diárias — Visitas Técnicas',                   categoria:'Diárias',               quantidade:60, unidade:'Diária', valor_unitario:250.00, valor_previsto:15000.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[10], projeto_id:PROJETO_ID, descricao:'Passagens — Deslocamentos Técnicos',           categoria:'Passagens',             quantidade:40, unidade:'Trecho', valor_unitario:180.00, valor_previsto:7200.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[11], projeto_id:PROJETO_ID, descricao:'Comunicação / Divulgação (Materiais Gráficos)',categoria:'Serviços de Terceiros', quantidade:1,  unidade:'Vb',  valor_unitario:6500.00,  valor_previsto:6500.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[12], projeto_id:PROJETO_ID, descricao:'Eventos e Oficinas de Capacitação',            categoria:'Serviços de Terceiros', quantidade:4,  unidade:'Evento', valor_unitario:3000.00,valor_previsto:12000.00, fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[13], projeto_id:PROJETO_ID, descricao:'Locação de Espaço / Sala de Reuniões',         categoria:'Serviços de Terceiros', quantidade:12, unidade:'Mês', valor_unitario:800.00,   valor_previsto:9600.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[14], projeto_id:PROJETO_ID, descricao:'Transporte de Materiais',                      categoria:'Serviços de Terceiros', quantidade:10, unidade:'Frete', valor_unitario:600.00, valor_previsto:6000.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[15], projeto_id:PROJETO_ID, descricao:'Fotografia e Registro de Atividades',          categoria:'Serviços de Terceiros', quantidade:6,  unidade:'Evento', valor_unitario:350.00,  valor_previsto:2100.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[16], projeto_id:PROJETO_ID, descricao:'Seguros e Taxas Bancárias',                    categoria:'Outros Custos',         quantidade:1,  unidade:'Vb',  valor_unitario:1500.00,  valor_previsto:1500.00,  fonte:'Repasse Federal' },
+  { id:RUBRICAS_IDS[17], projeto_id:PROJETO_ID, descricao:'Reserva de Contingência',                      categoria:'Outros Custos',         quantidade:1,  unidade:'Vb',  valor_unitario:1500.00,  valor_previsto:1500.00,  fonte:'Repasse Federal' },
+];
+
+// Calcula valor executado = 0 inicialmente
+RUBRICAS.forEach(r => { r.valor_executado = 0; });
+
+/* ── Pagamentos da planilha ── */
+const DESPESAS = [
+  /* Janeiro 2025 */
+  { mes:'2025-01', rubrica_idx:0,  desc:'Pagamento Coordenação Janeiro/2025',       forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'001/2025', data:'2025-01-31', valor:3600.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-01', rubrica_idx:1,  desc:'Pagamento Aux. Administrativo Jan/2025',   forn:'Auxiliar Administrativo',    cnpj:'',                    tipo:'Recibo',  nrdoc:'002/2025', data:'2025-01-31', valor:1800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-01', rubrica_idx:4,  desc:'Honorários Contador Janeiro/2025',         forn:'Escritório Contábil',        cnpj:'12.345.678/0001-90',  tipo:'NF-e',    nrdoc:'NF-0089',  data:'2025-01-31', valor:1200.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-01', rubrica_idx:13, desc:'Locação Sala Janeiro/2025',                forn:'Centro Comunitário',         cnpj:'',                    tipo:'Recibo',  nrdoc:'003/2025', data:'2025-01-31', valor:800.00,   fonte:'Repasse Federal', status:'Pago' },
+
+  /* Fevereiro 2025 */
+  { mes:'2025-02', rubrica_idx:0,  desc:'Pagamento Coordenação Fevereiro/2025',     forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'004/2025', data:'2025-02-28', valor:3600.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-02', rubrica_idx:1,  desc:'Pagamento Aux. Administrativo Fev/2025',   forn:'Auxiliar Administrativo',    cnpj:'',                    tipo:'Recibo',  nrdoc:'005/2025', data:'2025-02-28', valor:1800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-02', rubrica_idx:2,  desc:'Técnico Fitoterapia Fevereiro/2025',       forn:'Técnica em Fitoterapia',     cnpj:'',                    tipo:'Recibo',  nrdoc:'006/2025', data:'2025-02-28', valor:2800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-02', rubrica_idx:4,  desc:'Honorários Contador Fevereiro/2025',       forn:'Escritório Contábil',        cnpj:'12.345.678/0001-90',  tipo:'NF-e',    nrdoc:'NF-0102',  data:'2025-02-28', valor:1200.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-02', rubrica_idx:5,  desc:'Compra Material Escritório Fev/2025',      forn:'Papelaria Central',          cnpj:'98.765.432/0001-10',  tipo:'NF-e',    nrdoc:'NF-2345',  data:'2025-02-15', valor:1850.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-02', rubrica_idx:13, desc:'Locação Sala Fevereiro/2025',              forn:'Centro Comunitário',         cnpj:'',                    tipo:'Recibo',  nrdoc:'007/2025', data:'2025-02-28', valor:800.00,   fonte:'Repasse Federal', status:'Pago' },
+
+  /* Março 2025 */
+  { mes:'2025-03', rubrica_idx:0,  desc:'Pagamento Coordenação Março/2025',         forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'008/2025', data:'2025-03-31', valor:3600.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:1,  desc:'Pagamento Aux. Administrativo Mar/2025',   forn:'Auxiliar Administrativo',    cnpj:'',                    tipo:'Recibo',  nrdoc:'009/2025', data:'2025-03-31', valor:1800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:2,  desc:'Técnico Fitoterapia Março/2025',           forn:'Técnica em Fitoterapia',     cnpj:'',                    tipo:'Recibo',  nrdoc:'010/2025', data:'2025-03-31', valor:2800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:3,  desc:'Assistente Social Março/2025',             forn:'Assistente Social',          cnpj:'',                    tipo:'Recibo',  nrdoc:'011/2025', data:'2025-03-31', valor:2500.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:4,  desc:'Honorários Contador Março/2025',           forn:'Escritório Contábil',        cnpj:'12.345.678/0001-90',  tipo:'NF-e',    nrdoc:'NF-0118',  data:'2025-03-31', valor:1200.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:9,  desc:'Diárias Visitas Técnicas Março/2025',      forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'012/2025', data:'2025-03-20', valor:1250.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:12, desc:'Oficina de Capacitação em Fitoterapia',    forn:'Centro de Capacitação',      cnpj:'11.222.333/0001-44',  tipo:'NF-e',    nrdoc:'NF-0456',  data:'2025-03-22', valor:3000.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-03', rubrica_idx:13, desc:'Locação Sala Março/2025',                  forn:'Centro Comunitário',         cnpj:'',                    tipo:'Recibo',  nrdoc:'013/2025', data:'2025-03-31', valor:800.00,   fonte:'Repasse Federal', status:'Pago' },
+
+  /* Abril 2025 */
+  { mes:'2025-04', rubrica_idx:0,  desc:'Pagamento Coordenação Abril/2025',         forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'014/2025', data:'2025-04-30', valor:3600.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:1,  desc:'Pagamento Aux. Administrativo Abr/2025',   forn:'Auxiliar Administrativo',    cnpj:'',                    tipo:'Recibo',  nrdoc:'015/2025', data:'2025-04-30', valor:1800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:2,  desc:'Técnico Fitoterapia Abril/2025',           forn:'Técnica em Fitoterapia',     cnpj:'',                    tipo:'Recibo',  nrdoc:'016/2025', data:'2025-04-30', valor:2800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:3,  desc:'Assistente Social Abril/2025',             forn:'Assistente Social',          cnpj:'',                    tipo:'Recibo',  nrdoc:'017/2025', data:'2025-04-30', valor:2500.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:6,  desc:'Insumos Fitoterapia — Sementes e Mudas',   forn:'Viveiro Florestal Ltda',     cnpj:'55.666.777/0001-88',  tipo:'NF-e',    nrdoc:'NF-0789',  data:'2025-04-10', valor:4200.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:7,  desc:'Kits Ferramentas — Lote 1 (15 kits)',      forn:'Agropecuária Amazônica',     cnpj:'33.444.555/0001-66',  tipo:'NF-e',    nrdoc:'NF-1122',  data:'2025-04-15', valor:6750.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:10, desc:'Passagens Técnicas — Visitas',             forn:'Agência de Viagens',         cnpj:'77.888.999/0001-00',  tipo:'NF-e',    nrdoc:'NF-0344',  data:'2025-04-08', valor:2520.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-04', rubrica_idx:13, desc:'Locação Sala Abril/2025',                  forn:'Centro Comunitário',         cnpj:'',                    tipo:'Recibo',  nrdoc:'018/2025', data:'2025-04-30', valor:800.00,   fonte:'Repasse Federal', status:'Pago' },
+
+  /* Maio 2025 */
+  { mes:'2025-05', rubrica_idx:0,  desc:'Pagamento Coordenação Maio/2025',          forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'019/2025', data:'2025-05-31', valor:3600.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-05', rubrica_idx:1,  desc:'Pagamento Aux. Administrativo Mai/2025',   forn:'Auxiliar Administrativo',    cnpj:'',                    tipo:'Recibo',  nrdoc:'020/2025', data:'2025-05-31', valor:1800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-05', rubrica_idx:2,  desc:'Técnico Fitoterapia Maio/2025',            forn:'Técnica em Fitoterapia',     cnpj:'',                    tipo:'Recibo',  nrdoc:'021/2025', data:'2025-05-31', valor:2800.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-05', rubrica_idx:3,  desc:'Assistente Social Maio/2025',              forn:'Assistente Social',          cnpj:'',                    tipo:'Recibo',  nrdoc:'022/2025', data:'2025-05-31', valor:2500.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-05', rubrica_idx:4,  desc:'Honorários Contador Maio/2025',            forn:'Escritório Contábil',        cnpj:'12.345.678/0001-90',  tipo:'NF-e',    nrdoc:'NF-0198',  data:'2025-05-31', valor:1200.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-05', rubrica_idx:11, desc:'Material Gráfico — Banners e Folders',     forn:'Gráfica Digital',            cnpj:'22.333.444/0001-55',  tipo:'NF-e',    nrdoc:'NF-0567',  data:'2025-05-14', valor:3200.00,  fonte:'Repasse Federal', status:'Pago' },
+  { mes:'2025-05', rubrica_idx:13, desc:'Locação Sala Maio/2025',                   forn:'Centro Comunitário',         cnpj:'',                    tipo:'Recibo',  nrdoc:'023/2025', data:'2025-05-31', valor:800.00,   fonte:'Repasse Federal', status:'Pago' },
+
+  /* Junho 2025 (A Pagar) */
+  { mes:'2025-06', rubrica_idx:0,  desc:'Pagamento Coordenação Junho/2025',         forn:'Coordenadora Projeto',       cnpj:'',                    tipo:'Recibo',  nrdoc:'',         data:'2025-06-30', valor:3600.00,  fonte:'Repasse Federal', status:'A Pagar' },
+  { mes:'2025-06', rubrica_idx:1,  desc:'Pagamento Aux. Administrativo Jun/2025',   forn:'Auxiliar Administrativo',    cnpj:'',                    tipo:'Recibo',  nrdoc:'',         data:'2025-06-30', valor:1800.00,  fonte:'Repasse Federal', status:'A Pagar' },
+  { mes:'2025-06', rubrica_idx:2,  desc:'Técnico Fitoterapia Junho/2025',           forn:'Técnica em Fitoterapia',     cnpj:'',                    tipo:'Recibo',  nrdoc:'',         data:'2025-06-30', valor:2800.00,  fonte:'Repasse Federal', status:'A Pagar' },
+  { mes:'2025-06', rubrica_idx:3,  desc:'Assistente Social Junho/2025',             forn:'Assistente Social',          cnpj:'',                    tipo:'Recibo',  nrdoc:'',         data:'2025-06-30', valor:2500.00,  fonte:'Repasse Federal', status:'A Pagar' },
+  { mes:'2025-06', rubrica_idx:4,  desc:'Honorários Contador Junho/2025',           forn:'Escritório Contábil',        cnpj:'12.345.678/0001-90',  tipo:'NF-e',    nrdoc:'',         data:'2025-06-30', valor:1200.00,  fonte:'Repasse Federal', status:'A Pagar' },
+];
+
+// Prepara despesas com IDs e rubrica_id real
+const DESPESAS_FINAL = DESPESAS.map(d => ({
+  id:               genId(),
+  projeto_id:       PROJETO_ID,
+  rubrica_id:       RUBRICAS_IDS[d.rubrica_idx],
+  descricao:        d.desc,
+  fornecedor:       d.forn,
+  cnpj_cpf:         d.cnpj,
+  tipo_documento:   d.tipo,
+  numero_documento: d.nrdoc,
+  data_despesa:     d.data,
+  mes_referencia:   d.mes,
+  valor:            d.valor,
+  fonte:            d.fonte,
+  status_pagamento: d.status,
+  observacao:       ''
+}));
+
+/* ═══════════════════════════════════════════
+   RENDER PREVIEW
+═══════════════════════════════════════════ */
+function renderPreview() {
+  // Projeto
+  const ptbody = document.getElementById('projeto-preview');
+  if (ptbody) {
+    const fields = ['nome_projeto','numero_proposta','modalidade','status','ong_nome','concedente','municipio','uf','valor_repasse','valor_contrapartida','valor_total','data_inicio','data_fim','objeto'];
+    ptbody.innerHTML = fields.map(f => `<tr><td style="font-weight:500;color:#374151;width:180px;">${f}</td><td>${PROJETO[f]??''}</td></tr>`).join('');
+  }
+
+  // Rubricas
+  const rtbody = document.getElementById('rubricas-preview-body');
+  if (rtbody) {
+    rtbody.innerHTML = RUBRICAS.map((r,i) => `
+      <tr>
+        <td style="color:#6b7280;">${i+1}</td>
+        <td style="font-weight:500;">${r.descricao}</td>
+        <td><span style="background:#dbeafe;color:#1e40af;padding:2px 7px;border-radius:4px;font-size:.7rem;">${r.categoria}</span></td>
+        <td>${r.quantidade}</td>
+        <td>${r.unidade}</td>
+        <td style="text-align:right;">${fmtBRL(r.valor_unitario)}</td>
+        <td style="text-align:right;font-weight:600;">${fmtBRL(r.valor_previsto)}</td>
+        <td style="font-size:.72rem;">${r.fonte}</td>
+      </tr>`).join('');
+  }
+
+  // Despesas
+  const dtbody = document.getElementById('despesas-preview-body');
+  if (dtbody) {
+    dtbody.innerHTML = DESPESAS_FINAL.map((d,i) => {
+      const rub = RUBRICAS[DESPESAS[i].rubrica_idx];
+      return `<tr>
+        <td style="color:#6b7280;">${i+1}</td>
+        <td>${d.mes_referencia}</td>
+        <td style="font-size:.72rem;">${rub?.descricao?.slice(0,30)||''}</td>
+        <td style="font-weight:500;">${d.descricao?.slice(0,40)}</td>
+        <td style="font-size:.75rem;">${d.fornecedor}</td>
+        <td style="font-size:.72rem;">${d.numero_documento||'—'}</td>
+        <td style="font-size:.72rem;">${d.data_despesa}</td>
+        <td style="font-size:.7rem;">${d.fonte}</td>
+        <td style="text-align:right;font-weight:600;">${fmtBRL(d.valor)}</td>
+        <td><span style="background:${d.status_pagamento==='Pago'?'#d1fae5':'#fef3c7'};color:${d.status_pagamento==='Pago'?'#065f46':'#92400e'};padding:2px 7px;border-radius:4px;font-size:.7rem;">${d.status_pagamento}</span></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   IMPORTAÇÃO
+═══════════════════════════════════════════ */
+function setProgress(pct, msg) {
+  document.getElementById('import-progress').style.width = pct + '%';
+  document.getElementById('import-status').textContent = msg || '';
+}
+
+async function sbInsert(tabela, dados, logId='import-log') {
+  const r = await fetch(`${SB_URL()}/${tabela}`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(dados)
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error(`[${tabela}] HTTP ${r.status}: ${txt.slice(0,300)}`);
+  return JSON.parse(txt);
+}
+
+async function sbDelete(tabela, campo, valor) {
+  const r = await fetch(`${SB_URL()}/${tabela}?${campo}=eq.${encodeURIComponent(valor)}`, {
+    method: 'DELETE',
+    headers: headers({'Prefer':'return=minimal'})
+  });
+  return r.ok || r.status === 204;
+}
+
+async function importarProjeto() {
+  log('📁 Inserindo projeto...', 'info', 'import-log');
+  try {
+    await sbInsert('ong_projetos', PROJETO);
+    log(`✅ Projeto inserido: ${PROJETO.nome_projeto}`, 'ok', 'import-log');
+    setProgress(33, 'Projeto inserido!');
+    return true;
+  } catch(e) {
+    if (e.message.includes('409') || e.message.toLowerCase().includes('duplicate')) {
+      log(`⚠️ Projeto já existe (ID duplicado) — pulando`, 'warn', 'import-log');
+      return true;
+    }
+    log(`❌ Erro projeto: ${e.message}`, 'err', 'import-log');
+    return false;
+  }
+}
+
+async function importarRubricas() {
+  log(`📋 Inserindo ${RUBRICAS.length} rubricas...`, 'info', 'import-log');
+  let ok = 0, fail = 0;
+  for (const r of RUBRICAS) {
+    try {
+      await sbInsert('ong_rubricas', r);
+      ok++;
+      log(`  ✅ ${r.descricao.slice(0,50)} — ${fmtBRL(r.valor_previsto)}`, 'ok', 'import-log');
+    } catch(e) {
+      if (e.message.includes('409') || e.message.toLowerCase().includes('duplicate')) {
+        log(`  ⚠️ Rubrica já existe — ${r.descricao.slice(0,40)}`, 'warn', 'import-log');
+        ok++;
+      } else {
+        fail++;
+        log(`  ❌ Falhou: ${r.descricao.slice(0,40)} — ${e.message}`, 'err', 'import-log');
+      }
+    }
+  }
+  log(`📋 Rubricas: ${ok} OK, ${fail} falhas`, fail>0?'warn':'ok', 'import-log');
+  setProgress(66, `${ok} rubricas inseridas`);
+  return fail === 0;
+}
+
+async function importarDespesas() {
+  log(`💰 Inserindo ${DESPESAS_FINAL.length} despesas/pagamentos...`, 'info', 'import-log');
+  let ok = 0, fail = 0;
+  for (const d of DESPESAS_FINAL) {
+    try {
+      await sbInsert('ong_despesas', d);
+      ok++;
+      log(`  ✅ ${d.mes_referencia} | ${d.descricao.slice(0,40)} — ${fmtBRL(d.valor)}`, 'ok', 'import-log');
+    } catch(e) {
+      if (e.message.includes('409') || e.message.toLowerCase().includes('duplicate')) {
+        log(`  ⚠️ Despesa já existe — pulando`, 'warn', 'import-log');
+        ok++;
+      } else {
+        fail++;
+        log(`  ❌ Falhou: ${d.descricao.slice(0,40)} — ${e.message}`, 'err', 'import-log');
+      }
+    }
+  }
+  log(`💰 Despesas: ${ok} OK, ${fail} falhas`, fail>0?'warn':'ok', 'import-log');
+  setProgress(100, `${ok} despesas inseridas`);
+  return fail === 0;
+}
+
+async function importarTudo() {
+  document.getElementById('import-log').innerHTML = '';
+  setProgress(5, 'Iniciando importação...');
+  log('🚀 Iniciando importação completa...', 'info', 'import-log');
+
+  const p1 = await importarProjeto();
+  if (!p1) { log('⛔ Abortado — erro no projeto.', 'err', 'import-log'); return; }
+
+  const p2 = await importarRubricas();
+  if (!p2) { log('⛔ Algumas rubricas falharam. Continuando com despesas...', 'warn', 'import-log'); }
+
+  await importarDespesas();
+
+  const total = fmtBRL(DESPESAS_FINAL.reduce((s,d) => s+d.valor, 0));
+  log(`\n🎉 IMPORTAÇÃO CONCLUÍDA!`, 'ok', 'import-log');
+  log(`📊 Resumo: 1 projeto | ${RUBRICAS.length} rubricas | ${DESPESAS_FINAL.length} despesas | Total: ${total}`, 'ok', 'import-log');
+  log(`\n👉 Acesse o sistema para verificar os dados: <a href="index.html" style="color:#60a5fa;">index.html</a>`, 'info', 'import-log');
+}
+
+async function limparTodos() {
+  if (!confirm('⚠️ Isso vai EXCLUIR TODOS os dados do projeto 972600.2024 (despesas, rubricas e projeto).\n\nTem certeza?')) return;
+  document.getElementById('import-log').innerHTML = '';
+  log('🗑️ Limpando dados...', 'warn', 'import-log');
+  try {
+    // Despesas
+    for (const d of DESPESAS_FINAL) {
+      await sbDelete('ong_despesas', 'id', d.id).catch(() => {});
+    }
+    log(`  ✅ Despesas removidas`, 'ok', 'import-log');
+    // Rubricas
+    for (const r of RUBRICAS) {
+      await sbDelete('ong_rubricas', 'id', r.id).catch(() => {});
+    }
+    log(`  ✅ Rubricas removidas`, 'ok', 'import-log');
+    // Projeto
+    await sbDelete('ong_projetos', 'id', PROJETO_ID).catch(() => {});
+    log(`  ✅ Projeto removido`, 'ok', 'import-log');
+    log(`🗑️ Limpeza concluída`, 'warn', 'import-log');
+    setProgress(0, 'Dados removidos');
+  } catch(e) {
+    log(`❌ Erro na limpeza: ${e.message}`, 'err', 'import-log');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   INSERÇÃO MANUAL
+═══════════════════════════════════════════ */
+let _manualProjetoId = null;
+async function salvarProjetoManual() {
+  const nome = document.getElementById('m-nome').value.trim();
+  if (!nome) { alert('Nome obrigatório!'); return; }
+  _manualProjetoId = genId();
+  const data = {
+    id:                  _manualProjetoId,
+    nome_projeto:        nome,
+    numero_proposta:     document.getElementById('m-proposta').value.trim(),
+    modalidade:          document.getElementById('m-modalidade').value,
+    status:              'Em Execução',
+    ong_nome:            document.getElementById('m-ong').value.trim(),
+    ong_cnpj:            document.getElementById('m-cnpj').value.trim(),
+    concedente:          document.getElementById('m-concedente').value.trim(),
+    municipio:           document.getElementById('m-municipio').value.trim(),
+    uf:                  document.getElementById('m-uf').value.trim(),
+    valor_repasse:       Number(document.getElementById('m-repasse').value)||0,
+    valor_contrapartida: Number(document.getElementById('m-contra').value)||0,
+    valor_total:         (Number(document.getElementById('m-repasse').value)||0) + (Number(document.getElementById('m-contra').value)||0),
+    data_inicio:         document.getElementById('m-inicio').value||null,
+    data_fim:            document.getElementById('m-fim').value||null,
+    objeto:              document.getElementById('m-objeto').value.trim()
+  };
+  log(`📁 Salvando projeto: ${nome}`, 'info', 'manual-log');
+  try {
+    await sbInsert('ong_projetos', data);
+    log(`✅ Projeto salvo com ID: ${_manualProjetoId}`, 'ok', 'manual-log');
+    document.getElementById('card-manual-rubricas').style.display = '';
+    showToastManual(`Projeto "${nome}" criado! Agora adicione as rubricas.`, 'success');
+  } catch(e) {
+    log(`❌ Erro: ${e.message}`, 'err', 'manual-log');
+    showToastManual(`Erro: ${e.message}`, 'error');
+  }
+}
+
+let _rubricasManuais = [];
+async function salvarRubricaManual() {
+  if (!_manualProjetoId) { alert('Salve o projeto primeiro!'); return; }
+  const desc = document.getElementById('r-desc').value.trim();
+  if (!desc) { alert('Descrição obrigatória!'); return; }
+  const rubId = genId();
+  const qtd  = Number(document.getElementById('r-qtd').value)||1;
+  const vlr  = Number(document.getElementById('r-vlr').value)||0;
+  const data = {
+    id:             rubId,
+    projeto_id:     _manualProjetoId,
+    descricao:      desc,
+    categoria:      document.getElementById('r-cat').value,
+    quantidade:     qtd,
+    unidade:        document.getElementById('r-un').value,
+    valor_unitario: vlr,
+    valor_previsto: qtd * vlr,
+    valor_executado:0,
+    fonte:          document.getElementById('r-fonte').value
+  };
+  log(`📋 Salvando rubrica: ${desc}`, 'info', 'manual-log');
+  try {
+    await sbInsert('ong_rubricas', data);
+    _rubricasManuais.push(data);
+    log(`✅ Rubrica salva — ${fmtBRL(data.valor_previsto)}`, 'ok', 'manual-log');
+    // Limpa campos
+    document.getElementById('r-desc').value = '';
+    document.getElementById('r-vlr').value  = '';
+    renderRubricasManuaisLista();
+    showToastManual(`Rubrica "${desc}" criada!`, 'success');
+  } catch(e) {
+    log(`❌ Erro: ${e.message}`, 'err', 'manual-log');
+    showToastManual(`Erro: ${e.message}`, 'error');
+  }
+}
+
+function renderRubricasManuaisLista() {
+  const el = document.getElementById('rubricas-manuais-lista');
+  if (!el||!_rubricasManuais.length) return;
+  el.innerHTML = `<div style="background:#f8fafc;border-radius:8px;padding:10px;margin-top:8px;">
+    <div style="font-size:.78rem;font-weight:600;margin-bottom:6px;">Rubricas adicionadas (${_rubricasManuais.length}):</div>
+    ${_rubricasManuais.map(r=>`<div style="display:flex;justify-content:space-between;padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:.78rem;">
+      <span>${r.descricao}</span><span style="font-weight:600;">${fmtBRL(r.valor_previsto)}</span>
+    </div>`).join('')}
+    <div style="text-align:right;padding:6px 8px;font-weight:700;font-size:.82rem;">
+      Total: ${fmtBRL(_rubricasManuais.reduce((s,r)=>s+r.valor_previsto,0))}
+    </div>
+  </div>`;
+}
+
+function showToastManual(msg, type) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:8px;font-size:.82rem;font-weight:500;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.15);background:${type==='success'?'#065f46':'#991b1b'};color:#fff;`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  renderPreview();
+});
+</script>
+</body>
+</html>

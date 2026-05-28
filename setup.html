@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONG Gestor — Configuração Inicial</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,sans-serif;background:#f1f5f9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.1);width:100%;max-width:680px;overflow:hidden}
+    .card-header{background:linear-gradient(135deg,#0f172a,#1a56db);color:#fff;padding:24px 28px}
+    .card-header h1{font-size:1.3rem;font-weight:700;margin-bottom:4px}
+    .card-header p{font-size:.85rem;opacity:.75}
+    .card-body{padding:28px}
+    .step{display:flex;gap:14px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #e5e7eb}
+    .step:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+    .step-num{width:32px;height:32px;border-radius:50%;background:#e8f0fe;color:#1a56db;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0}
+    .step-num.done{background:#def7ec;color:#057a55}
+    .step-num.error{background:#fde8e8;color:#e02424}
+    .step-content{flex:1}
+    .step-title{font-weight:600;font-size:.9rem;margin-bottom:4px}
+    .step-desc{font-size:.8rem;color:#6b7280;margin-bottom:8px}
+    .status-text{font-size:.78rem;margin-top:4px}
+    .status-ok{color:#057a55}.status-err{color:#e02424}.status-wait{color:#6b7280}
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:8px;font-size:.88rem;font-weight:500;cursor:pointer;border:none;font-family:inherit}
+    .btn-primary{background:#1a56db;color:#fff}.btn-primary:hover{background:#1e429f}
+    .btn-success{background:#0e9f6e;color:#fff}.btn-success:hover{background:#057a55}
+    .btn-primary:disabled{background:#9ca3af;cursor:not-allowed}
+    .log{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:14px;font-size:.75rem;font-family:monospace;max-height:200px;overflow-y:auto;margin-top:14px;line-height:1.7}
+    .log-ok{color:#057a55}.log-err{color:#e02424}.log-info{color:#1a56db}
+    .progress-wrap{background:#e5e7eb;border-radius:99px;height:8px;margin:10px 0}
+    .progress-fill{height:100%;border-radius:99px;background:#1a56db;transition:width .3s}
+    .alert{padding:12px 16px;border-radius:8px;font-size:.83rem;margin-bottom:16px;display:flex;gap:9px;align-items:flex-start}
+    .alert-info{background:#e0f5f5;color:#0e7490;border-left:4px solid #0694a2}
+    .alert-success{background:#def7ec;color:#057a55;border-left:4px solid #0e9f6e}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <h1><i class="fas fa-seedling"></i> ONG Gestor — Configuração Inicial</h1>
+    <p>Configure as tabelas no Supabase e carregue os dados de exemplo</p>
+  </div>
+  <div class="card-body">
+
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle"></i>
+      <div>Este assistente irá criar as tabelas necessárias no seu banco Supabase e inserir os dados de exemplo do projeto <strong>022933/2024</strong>.</div>
+    </div>
+
+    <div id="steps">
+      <div class="step" id="step-0">
+        <div class="step-num" id="icon-0">1</div>
+        <div class="step-content">
+          <div class="step-title">Conexão com Supabase</div>
+          <div class="step-desc">Verificar conectividade com o banco de dados</div>
+          <div class="status-text status-wait" id="status-0">Aguardando...</div>
+        </div>
+      </div>
+      <div class="step" id="step-1">
+        <div class="step-num" id="icon-1">2</div>
+        <div class="step-content">
+          <div class="step-title">Criar Tabelas</div>
+          <div class="step-desc">ong_projetos, ong_rubricas, ong_despesas, ong_metas, ong_cronograma</div>
+          <div class="status-text status-wait" id="status-1">Aguardando...</div>
+        </div>
+      </div>
+      <div class="step" id="step-2">
+        <div class="step-num" id="icon-2">3</div>
+        <div class="step-content">
+          <div class="step-title">Inserir Dados de Exemplo</div>
+          <div class="step-desc">Projeto 022933/2024 com rubricas, despesas e metas</div>
+          <div class="status-text status-wait" id="status-2">Aguardando...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-wrap"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btn-setup" onclick="runSetup()">
+        <i class="fas fa-play"></i> Executar Configuração
+      </button>
+      <a href="index.html" class="btn btn-success" id="btn-go" style="display:none;">
+        <i class="fas fa-arrow-right"></i> Ir para o Sistema
+      </a>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://twzzchsxuaiashmwozdz.supabase.co/rest/v1";
+const SUPABASE_KEY = "sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B";
+const MGMT_URL = "https://twzzchsxuaiashmwozdz.supabase.co";
+
+const HDR = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Prefer': 'return=representation'
+};
+
+function log(msg, cls='') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<div class="${cls}">▸ ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStep(n, state, msg) {
+  const icon = document.getElementById(`icon-${n}`);
+  const status = document.getElementById(`status-${n}`);
+  const icons = { ok:'✓', error:'✗', loading:'⟳' };
+  icon.textContent = icons[state]||n+1;
+  icon.className = `step-num${state==='ok'?' done':state==='error'?' error':''}`;
+  status.textContent = msg;
+  status.className = `status-text ${state==='ok'?'status-ok':state==='error'?'status-err':'status-wait'}`;
+}
+
+function setProgress(p) {
+  document.getElementById('progress').style.width = p + '%';
+}
+
+async function sbGet(table) {
+  const r = await fetch(`${SUPABASE_URL}/${table}?limit=1`, { headers: HDR });
+  return r;
+}
+
+async function sbInsert(table, data) {
+  const r = await fetch(`${SUPABASE_URL}/${table}`, {
+    method: 'POST',
+    headers: { ...HDR, 'Prefer': 'return=representation,resolution=ignore-duplicates' },
+    body: JSON.stringify(Array.isArray(data) ? data : [data])
+  });
+  return r;
+}
+
+async function runSetup() {
+  const btn = document.getElementById('btn-setup');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configurando...';
+  document.getElementById('log').innerHTML = '';
+
+  /* STEP 0: Conectividade */
+  setStep(0,'loading','Testando conexão...');
+  log('Verificando conexão com Supabase...','log-info');
+  try {
+    const r = await sbGet('ong_projetos');
+    if (r.status === 404 || r.status === 200 || r.status === 406) {
+      setStep(0,'ok','Conexão OK');
+      log('Conexão estabelecida com sucesso','log-ok');
+    } else {
+      throw new Error('HTTP ' + r.status);
+    }
+  } catch(e) {
+    setStep(0,'error','Falha na conexão: '+e.message);
+    log('ERRO de conexão: '+e.message,'log-err');
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-redo"></i> Tentar Novamente';
+    return;
+  }
+  setProgress(20);
+
+  /* STEP 1: Verificar/Criar tabelas via inserções */
+  setStep(1,'loading','Verificando tabelas...');
+  log('Verificando existência das tabelas...','log-info');
+
+  const tables = ['ong_projetos','ong_rubricas','ong_despesas','ong_metas','ong_cronograma'];
+  const missing = [];
+  for (const t of tables) {
+    const r = await sbGet(t);
+    if (r.status === 404) missing.push(t);
+    else log(`Tabela ${t}: OK`,'log-ok');
+  }
+
+  if (missing.length > 0) {
+    log(`⚠️ Tabelas não encontradas: ${missing.join(', ')}`, 'log-err');
+    log('⚠️ Execute o arquivo supabase_setup.sql no SQL Editor do Supabase Dashboard', 'log-err');
+    log('Acesse: https://supabase.com/dashboard → SQL Editor → Cole o conteúdo do arquivo supabase_setup.sql', 'log-info');
+    setStep(1,'error','Execute supabase_setup.sql no painel do Supabase');
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-redo"></i> Verificar Novamente';
+    return;
+  }
+
+  setStep(1,'ok','Todas as tabelas existem');
+  setProgress(60);
+
+  /* STEP 2: Inserir dados */
+  setStep(2,'loading','Inserindo dados de exemplo...');
+  log('Inserindo projeto de exemplo...','log-info');
+
+  try {
+    // Projeto
+    await sbInsert('ong_projetos', {
+      id:'proj-001', numero_proposta:'022933/2024',
+      nome_projeto:'Capacitação em Fitoterapia e Produtos Naturais',
+      objeto:'Capacitar tecnicamente 160 Trabalhadores e Cidadãos em situação de vulnerabilidade social.',
+      ong_nome:'Organização da Sociedade Civil - OSC', ong_cnpj:'00.000.000/0001-00',
+      concedente:'Ministério do Trabalho e Emprego', programa:'TransfereGov - Termo de Fomento',
+      valor_repasse:288000, valor_contrapartida:32000, valor_total:320000,
+      data_inicio:'2024-01-01', data_fim:'2024-12-31',
+      status:'Em Execução', modalidade:'Termo de Fomento',
+      publico_beneficiario:'Trabalhadores em vulnerabilidade social e financeira, minorias',
+      municipio:'São Paulo', uf:'SP'
+    });
+    log('Projeto inserido','log-ok');
+
+    // Rubricas
+    const rubricas = [
+      {id:'rub-001',projeto_id:'proj-001',categoria:'Recursos Humanos',descricao:'Coordenador do Projeto',unidade:'Mês',quantidade:12,valor_unitario:4000,valor_previsto:48000},
+      {id:'rub-002',projeto_id:'proj-001',categoria:'Recursos Humanos',descricao:'Instrutores de Fitoterapia',unidade:'Mês',quantidade:12,valor_unitario:6000,valor_previsto:72000},
+      {id:'rub-003',projeto_id:'proj-001',categoria:'Material de Consumo',descricao:'Material Didático e Apostilas',unidade:'Kit',quantidade:160,valor_unitario:80,valor_previsto:12800},
+      {id:'rub-004',projeto_id:'proj-001',categoria:'Material de Consumo',descricao:'Insumos e Plantas para Prática',unidade:'Unid.',quantidade:160,valor_unitario:120,valor_previsto:19200},
+      {id:'rub-005',projeto_id:'proj-001',categoria:'Serviços de Terceiros',descricao:'Locação de Espaço',unidade:'Mês',quantidade:12,valor_unitario:2000,valor_previsto:24000},
+      {id:'rub-006',projeto_id:'proj-001',categoria:'Equipamentos',descricao:'Equipamentos de Laboratório',unidade:'Conjunto',quantidade:4,valor_unitario:9000,valor_previsto:36000},
+      {id:'rub-007',projeto_id:'proj-001',categoria:'Diárias',descricao:'Diárias para Visitas Técnicas',unidade:'Diária',quantidade:40,valor_unitario:240,valor_previsto:9600},
+      {id:'rub-008',projeto_id:'proj-001',categoria:'Outros Custos',descricao:'Certificação dos Participantes',unidade:'Certif.',quantidade:160,valor_unitario:100,valor_previsto:16000},
+      {id:'rub-009',projeto_id:'proj-001',categoria:'Passagens',descricao:'Passagens para Visitas Técnicas',unidade:'Passagem',quantidade:40,valor_unitario:120,valor_previsto:4800},
+      {id:'rub-010',projeto_id:'proj-001',categoria:'Outros Custos',descricao:'Alimentação e Lanches',unidade:'Refeição',quantidade:1600,valor_unitario:48.5,valor_previsto:77600}
+    ];
+    await sbInsert('ong_rubricas', rubricas);
+    log(`${rubricas.length} rubricas inseridas`,'log-ok');
+
+    // Despesas
+    const despesas = [
+      {id:'desp-001',projeto_id:'proj-001',rubrica_id:'rub-001',data_despesa:'2024-01-31',mes_referencia:'2024-01',descricao:'Remuneração Coordenador — Janeiro',fornecedor:'João Silva',cnpj_cpf:'123.456.789-00',numero_documento:'REC-001',tipo_documento:'Recibo',valor:4000,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-002',projeto_id:'proj-001',rubrica_id:'rub-002',data_despesa:'2024-01-31',mes_referencia:'2024-01',descricao:'Remuneração Instrutores — Janeiro',fornecedor:'Maria Ervas ME',cnpj_cpf:'12.345.678/0001-90',numero_documento:'NF-0042',tipo_documento:'Nota Fiscal',valor:6000,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-003',projeto_id:'proj-001',rubrica_id:'rub-003',data_despesa:'2024-02-10',mes_referencia:'2024-02',descricao:'Material didático — Turma 1',fornecedor:'Gráfica Digital Ltda',cnpj_cpf:'98.765.432/0001-11',numero_documento:'NF-0215',tipo_documento:'Nota Fiscal',valor:6400,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-004',projeto_id:'proj-001',rubrica_id:'rub-006',data_despesa:'2024-02-20',mes_referencia:'2024-02',descricao:'Equipamentos de laboratório',fornecedor:'Equipa Lab',cnpj_cpf:'11.222.333/0001-44',numero_documento:'NF-1045',tipo_documento:'Nota Fiscal',valor:36000,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-005',projeto_id:'proj-001',rubrica_id:'rub-005',data_despesa:'2024-03-01',mes_referencia:'2024-03',descricao:'Aluguel espaço — Março',fornecedor:'Espaço Eventos ABC',cnpj_cpf:'55.666.777/0001-88',numero_documento:'NF-0321',tipo_documento:'Nota Fiscal',valor:2000,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-006',projeto_id:'proj-001',rubrica_id:'rub-004',data_despesa:'2024-03-15',mes_referencia:'2024-03',descricao:'Plantas medicinais e insumos',fornecedor:'Viveiro Natural Ltda',cnpj_cpf:'22.333.444/0001-55',numero_documento:'NF-0789',tipo_documento:'Nota Fiscal',valor:9600,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-007',projeto_id:'proj-001',rubrica_id:'rub-007',data_despesa:'2024-04-10',mes_referencia:'2024-04',descricao:'Diárias visita técnica — 5 participantes',fornecedor:'Vários',cnpj_cpf:'',numero_documento:'REC-010 ao 014',tipo_documento:'Recibo',valor:1200,fonte:'Repasse Federal',status_pagamento:'Pago'},
+      {id:'desp-008',projeto_id:'proj-001',rubrica_id:'rub-010',data_despesa:'2024-04-30',mes_referencia:'2024-04',descricao:'Alimentação e lanches — Abril',fornecedor:'Buffet Saudável Ltda',cnpj_cpf:'33.444.555/0001-66',numero_documento:'NF-0456',tipo_documento:'Nota Fiscal',valor:9700,fonte:'Contrapartida',status_pagamento:'Pago'},
+      {id:'desp-009',projeto_id:'proj-001',rubrica_id:'rub-001',data_despesa:'2024-05-31',mes_referencia:'2024-05',descricao:'Remuneração Coordenador — Maio',fornecedor:'João Silva',cnpj_cpf:'123.456.789-00',numero_documento:'REC-005',tipo_documento:'Recibo',valor:4000,fonte:'Repasse Federal',status_pagamento:'A Pagar'},
+      {id:'desp-010',projeto_id:'proj-001',rubrica_id:'rub-002',data_despesa:'2024-05-31',mes_referencia:'2024-05',descricao:'Remuneração Instrutores — Maio',fornecedor:'Maria Ervas ME',cnpj_cpf:'12.345.678/0001-90',numero_documento:'NF-0098',tipo_documento:'Nota Fiscal',valor:6000,fonte:'Repasse Federal',status_pagamento:'A Pagar'}
+    ];
+    await sbInsert('ong_despesas', despesas);
+    log(`${despesas.length} despesas inseridas`,'log-ok');
+
+    // Metas
+    const metas = [
+      {id:'meta-001',projeto_id:'proj-001',numero_meta:1,descricao_meta:'Capacitação em Plantas Aromáticas e Medicinais',indicador:'Nº de trabalhadores capacitados',valor_previsto:128000,valor_executado:64000,beneficiarios_previstos:80,beneficiarios_atendidos:42,data_inicio:'2024-01-15',data_fim:'2024-06-30',status:'Em Andamento',percentual_fisico:52.5},
+      {id:'meta-002',projeto_id:'proj-001',numero_meta:2,descricao_meta:'Capacitação em Comercialização e Fitopreparados',indicador:'Nº de trabalhadores inseridos no mercado',valor_previsto:120000,valor_executado:28000,beneficiarios_previstos:80,beneficiarios_atendidos:18,data_inicio:'2024-07-01',data_fim:'2024-12-15',status:'Em Andamento',percentual_fisico:22.5},
+      {id:'meta-003',projeto_id:'proj-001',numero_meta:3,descricao_meta:'Rede de Apoio Pós-Capacitação',indicador:'Nº beneficiários acompanhados 6 meses',valor_previsto:72000,valor_executado:0,beneficiarios_previstos:160,beneficiarios_atendidos:0,data_inicio:'2025-01-01',data_fim:'2025-06-30',status:'Não Iniciada',percentual_fisico:0}
+    ];
+    await sbInsert('ong_metas', metas);
+    log(`${metas.length} metas inseridas`,'log-ok');
+
+    // Cronograma (coordenador + instrutores por mês)
+    const meses = ['2024-01','2024-02','2024-03','2024-04','2024-05','2024-06','2024-07','2024-08','2024-09','2024-10','2024-11','2024-12'];
+    const cronograma = meses.flatMap((m,i)=>[
+      {id:`crn-001-${String(i+1).padStart(2,'0')}`,projeto_id:'proj-001',rubrica_id:'rub-001',mes:m,valor_previsto:4000},
+      {id:`crn-002-${String(i+1).padStart(2,'0')}`,projeto_id:'proj-001',rubrica_id:'rub-002',mes:m,valor_previsto:6000}
+    ]);
+    await sbInsert('ong_cronograma', cronograma);
+    log(`${cronograma.length} itens de cronograma inseridos`,'log-ok');
+
+    setStep(2,'ok','Dados de exemplo carregados com sucesso!');
+    setProgress(100);
+    document.getElementById('btn-go').style.display='';
+    btn.style.display='none';
+    log('✅ Configuração concluída! Clique em "Ir para o Sistema".','log-ok');
+
+  } catch(e) {
+    setStep(2,'error','Erro: '+e.message);
+    log('ERRO: '+e.message,'log-err');
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-redo"></i> Tentar Novamente';
+  }
+}
+</script>
+</body>
+</html>
