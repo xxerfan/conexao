@@ -35,6 +35,8 @@ async function loadFinanceiro() {
     renderFinChartRubricas();
     renderFinChartMensal();
     renderFinChartFonte();
+    renderFinChartFornecedores();
+    renderFinChartStatusPagamento();
     renderDespesasTable(despesasData);
 
     // ── Carrega Rubricas na aba unificada ──
@@ -224,7 +226,7 @@ function renderFinChartFonte() {
       datasets: [{
         data: [repasse, contra, outros],
         backgroundColor: ['#2563eb','#059669','#d97706'],
-        borderWidth: 3, borderColor: '#fff', hoverOffset: 8
+        borderWidth: 3, borderColor: 'var(--card-bg,#fff)', hoverOffset: 8
       }]
     },
     options: {
@@ -234,6 +236,110 @@ function renderFinChartFonte() {
         tooltip: { callbacks: { label: c => ` ${fmt.currency(c.raw)}` } }
       }
     }
+  });
+}
+
+/* ── Gráfico Top Fornecedores ── */
+function renderFinChartFornecedores() {
+  const ctx = document.getElementById('chartTopFornecedores');
+  if (!ctx) return;
+  _destroyFinChart('fornecedores');
+
+  const mapaForn = {};
+  despesasData.forEach(d => {
+    if (!d.fornecedor) return;
+    mapaForn[d.fornecedor] = (mapaForn[d.fornecedor]||0) + (Number(d.valor)||0);
+  });
+  const sorted = Object.entries(mapaForn).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  if (!sorted.length) { _drawFinEmpty(ctx, 'Sem fornecedores'); return; }
+
+  const paleta = ['#2563eb','#059669','#d97706','#dc2626','#0891b2','#7c3aed','#db2777','#047857'];
+
+  _finCharts.fornecedores = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(x => x[0].length > 18 ? x[0].slice(0,18)+'…' : x[0]),
+      datasets: [{
+        label: 'Total (R$)',
+        data: sorted.map(x => x[1]),
+        backgroundColor: paleta.map(c => c + 'cc'),
+        borderColor: paleta,
+        borderWidth: 1.5,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${fmt.currency(c.raw)}` } }
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { callback: v => v>=1000?(v/1000).toFixed(0)+'k':''+v }, grid: { color: 'rgba(0,0,0,.04)' } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+/* ── Gráfico Status de Pagamento ── */
+function renderFinChartStatusPagamento() {
+  const ctx = document.getElementById('chartStatusPagamento');
+  if (!ctx) return;
+  _destroyFinChart('statuspag');
+
+  const statusMap = {};
+  despesasData.forEach(d => {
+    const s = d.status_pagamento || 'N/D';
+    statusMap[s] = (statusMap[s]||0) + (Number(d.valor)||0);
+  });
+
+  const labels = Object.keys(statusMap);
+  const colorMap = {
+    'Pago':       '#059669',
+    'A Pagar':    '#d97706',
+    'Contestado': '#dc2626',
+    'N/D':        '#94a3b8'
+  };
+
+  _finCharts.statuspag = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: Object.values(statusMap),
+        backgroundColor: labels.map(l => colorMap[l] || '#94a3b8'),
+        borderWidth: 3,
+        borderColor: 'var(--card-bg,#fff)',
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              const total = Object.values(statusMap).reduce((s,v) => s+v, 0);
+              return ` ${c.label}: ${fmt.currency(c.raw)} (${Math.round(c.raw/total*100)}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ── Helper: chart vazio (fin) ── */
+function _drawFinEmpty(ctx, msg) {
+  try { const e = Chart.getChart(ctx); if (e) e.destroy(); } catch(e) {}
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: [msg], datasets: [{ data: [1], backgroundColor: ['#f1f5f9'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '0%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
   });
 }
 
@@ -685,7 +791,7 @@ async function exportarTudoExcel() {
 
 /* ════════════════════════════════════════════
    UPLOAD DE NF / COMPROVANTE
-   FileReader → base64 → campo nf_url (TEXT no Supabase)
+   FASE 2: Storage.upload() → URL pública (Supabase Storage)
 ════════════════════════════════════════════ */
 
 const NF_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -751,39 +857,59 @@ function nfDrop(e) {
   _nfLerArquivo(file);
 }
 
-function _nfLerArquivo(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const base64 = e.target.result; // "data:application/pdf;base64,..."
-    // Salva no campo oculto
-    const hidden = document.getElementById('nf-url-hidden');
-    if (hidden) hidden.value = base64;
-    // Atualiza visual
-    _nfMostrarPreview(base64, file.type, file.name);
-    showToast('Arquivo anexado com sucesso!', 'success');
-  };
-  reader.onerror = () => showToast('Erro ao ler o arquivo', 'error');
-  reader.readAsDataURL(file);
+async function _nfLerArquivo(file) {
+  // FASE 2: Upload binário para Supabase Storage
+  const hidden    = document.getElementById('nf-url-hidden');
+  const dropArea  = document.getElementById('nf-drop-area');
+  const spinner   = document.getElementById('nf-upload-spinner');
+  if (spinner) spinner.style.display = '';
+  if (dropArea) dropArea.classList.add('uploading');
+  try {
+    const path = Storage.makePath('nf', file.name);
+    const url  = await Storage.upload(file, path);
+    if (hidden) hidden.value = url;
+    _nfMostrarPreview(url, file.type, file.name);
+    showToast('NF enviada com sucesso!', 'success');
+  } catch(e) {
+    // fallback: usa Data URL local se Storage falhar
+    console.warn('[NF] Storage indisponível, usando base64 local:', e.message);
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const b64 = ev.target.result;
+      if (hidden) hidden.value = b64;
+      _nfMostrarPreview(b64, file.type, file.name);
+      showToast('Arquivo anexado localmente (Storage offline)', 'warning');
+    };
+    reader.onerror = () => showToast('Erro ao ler o arquivo', 'error');
+    reader.readAsDataURL(file);
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+    if (dropArea) dropArea.classList.remove('uploading');
+  }
 }
 
-function _nfMostrarPreview(dataUrl, mimeType, nome) {
+function _nfMostrarPreview(urlOrData, mimeType, nome) {
   const placeholder = document.getElementById('nf-drop-placeholder');
   if (placeholder) placeholder.style.display = 'none';
   const preview = document.getElementById('nf-preview-area');
   if (!preview) return;
   preview.style.display = '';
 
-  if (mimeType.startsWith('image/')) {
+  const isStorageUrl = urlOrData && urlOrData.startsWith('http');
+  const isImage = mimeType ? mimeType.startsWith('image/') : /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(urlOrData);
+
+  if (isImage) {
     preview.innerHTML = `
-      <img src="${dataUrl}" class="nf-preview-img" alt="Preview NF">
+      <img src="${urlOrData}" class="nf-preview-img" alt="Preview NF"
+           style="max-height:160px;border-radius:6px;cursor:pointer;" onclick="nfAbrirAnexo('${urlOrData.replace(/'/g, "\\'")}')"> 
       <p style="font-size:.73rem;color:var(--text-muted);margin-top:6px;">${nome}</p>`;
   } else {
     preview.innerHTML = `
-      <div class="nf-preview-pdf">
+      <div class="nf-preview-pdf" style="cursor:pointer;" onclick="nfAbrirAnexo('${urlOrData.replace(/'/g, "\\'") }')">
         <i class="fas fa-file-pdf"></i>
         <div>
           <div style="font-size:.82rem;font-weight:700;">${nome}</div>
-          <div style="font-size:.71rem;color:var(--text-muted);">PDF pronto para salvar</div>
+          <div style="font-size:.71rem;color:var(--text-muted);">${isStorageUrl ? 'Arquivo no Storage • clique para abrir' : 'PDF pronto para salvar'}</div>
         </div>
       </div>`;
   }
@@ -795,15 +921,21 @@ function _nfMostrarPreview(dataUrl, mimeType, nome) {
 }
 
 /* Ao editar despesa com NF existente */
-function nfRestaurarExistente(dataUrl) {
-  if (!dataUrl) return;
+function nfRestaurarExistente(urlOrData) {
+  if (!urlOrData) return;
   const hidden = document.getElementById('nf-url-hidden');
-  if (hidden) hidden.value = dataUrl;
-  // Descobre tipo pelo prefixo da data URL
-  const mimeMatch = dataUrl.match(/^data:([^;]+);/);
-  const mimeType  = mimeMatch ? mimeMatch[1] : 'application/pdf';
-  const nome      = mimeType.startsWith('image/') ? 'imagem-anexada' : 'documento.pdf';
-  _nfMostrarPreview(dataUrl, mimeType, nome);
+  if (hidden) hidden.value = urlOrData;
+  let mimeType, nome;
+  if (urlOrData.startsWith('http')) {
+    const isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(urlOrData);
+    mimeType = isImg ? 'image/jpeg' : 'application/pdf';
+    nome = decodeURIComponent(urlOrData.split('/').pop().split('?')[0]) || 'documento';
+  } else {
+    const mimeMatch = urlOrData.match(/^data:([^;]+);/);
+    mimeType = mimeMatch ? mimeMatch[1] : 'application/pdf';
+    nome = mimeType.startsWith('image/') ? 'imagem-anexada' : 'documento.pdf';
+  }
+  _nfMostrarPreview(urlOrData, mimeType, nome);
 }
 
 /* Abre o anexo de uma despesa pelo ID (evita colocar base64 gigante no DOM) */
@@ -813,17 +945,21 @@ function nfAbrirPorId(despesaId) {
   nfAbrirAnexo(d.nf_url);
 }
 
-/* Abre o anexo em nova aba */
-function nfAbrirAnexo(dataUrl) {
-  if (!dataUrl) return;
+/* Abre o anexo em nova aba — suporta URL do Storage e data URL legado */
+function nfAbrirAnexo(urlOrData) {
+  if (!urlOrData) return;
+  if (urlOrData.startsWith('http')) {
+    window.open(urlOrData, '_blank');
+    return;
+  }
   const w = window.open();
   if (w) {
-    if (dataUrl.startsWith('data:image/')) {
+    if (urlOrData.startsWith('data:image/')) {
       w.document.write(`<html><body style="margin:0;background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh;">
-        <img src="${dataUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>`);
+        <img src="${urlOrData}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>`);
     } else {
       w.document.write(`<html><body style="margin:0;height:100vh;">
-        <embed src="${dataUrl}" type="application/pdf" width="100%" height="100%"></body></html>`);
+        <embed src="${urlOrData}" type="application/pdf" width="100%" height="100%"></body></html>`);
     }
   }
 }

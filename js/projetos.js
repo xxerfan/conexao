@@ -216,23 +216,44 @@ function triggerLogoUpload() {
   document.getElementById('logo-file-input')?.click();
 }
 
-function handleLogoUpload(event) {
+async function handleLogoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  if (file.size > 600000) {
-    showToast('Imagem muito grande. Máximo: 500KB', 'warning');
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Imagem muito grande. Máximo: 2 MB', 'warning');
+    return;
+  }
+  if (!file.type.startsWith('image/')) {
+    showToast('Apenas imagens são aceitas (JPG, PNG, WebP)', 'warning');
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result;
-    _setLogoPreview(base64);
-    const hidden = document.getElementById('logo-url-hidden');
-    if (hidden) hidden.value = base64;
-  };
-  reader.readAsDataURL(file);
+  // FASE 2: tenta upload para Supabase Storage
+  const btn    = document.getElementById('btn-logo-upload') || document.querySelector('[onclick="triggerLogoUpload()"]');
+  const hidden = document.getElementById('logo-url-hidden');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+  try {
+    const path = Storage.makePath('logos', file.name);
+    const url  = await Storage.upload(file, path);
+    _setLogoPreview(url);
+    if (hidden) hidden.value = url;
+    showToast('Logo enviada com sucesso!', 'success');
+  } catch(e) {
+    // Fallback: base64 local
+    console.warn('[Logo] Storage indisponível, usando base64:', e.message);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result;
+      _setLogoPreview(base64);
+      if (hidden) hidden.value = base64;
+      showToast('Logo carregada localmente (Storage offline)', 'warning');
+    };
+    reader.readAsDataURL(file);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload"></i> Upload Logo'; }
+  }
 }
 
 function _setLogoPreview(src) {

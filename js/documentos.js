@@ -35,7 +35,7 @@ let despesasDocData   = [];
 let documentoEditId   = null;
 
 // Arquivo selecionado pelo usuário para upload
-let _docArquivoSelecionado = null; // { base64, nome, mime, bytes }
+let _docArquivoSelecionado = null; // { file, nome, mime, bytes } — aguarda upload ao salvar
 
 /* ══════════════════════════════════════════════════
    UTILITÁRIOS
@@ -383,7 +383,7 @@ function docSwitchTab(tab) {
 }
 
 /* ══════════════════════════════════════════════════
-   UPLOAD: FileReader → Base64
+   UPLOAD: FASE 2 — Storage.upload() → URL pública
 ══════════════════════════════════════════════════ */
 function triggerDocFileInput() {
   document.getElementById('doc-file-input')?.click();
@@ -414,9 +414,9 @@ function handleDocDragLeave() {
 }
 
 function _processDocFile(file) {
-  const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+  const MAX_BYTES = 10 * 1024 * 1024; // 10 MB (bucket permite até 10MB)
   if (file.size > MAX_BYTES) {
-    showToast(`Arquivo muito grande (${formatBytes(file.size)}). Limite: 8 MB. Use URL externa para arquivos maiores.`, 'error');
+    showToast(`Arquivo muito grande (${formatBytes(file.size)}). Limite: 10 MB. Use URL externa para arquivos maiores.`, 'error');
     return;
   }
 
@@ -430,39 +430,18 @@ function _processDocFile(file) {
     return;
   }
 
-  _showUploadProgress(true, 0);
+  // FASE 2: armazena o arquivo obj para upload posterior ao salvar
+  _docArquivoSelecionado = {
+    file:  file,
+    nome:  file.name,
+    mime:  file.type,
+    bytes: file.size
+  };
+  _showArquivoInfo(file.name, file.size, file.type);
 
-  const reader = new FileReader();
-  reader.onprogress = (e) => {
-    if (e.lengthComputable) {
-      const pct = Math.round((e.loaded / e.total) * 100);
-      _showUploadProgress(true, pct);
-    }
-  };
-  reader.onload = (e) => {
-    _showUploadProgress(true, 100);
-    const base64Full = e.target.result;  // data:mime;base64,XXXX
-    _docArquivoSelecionado = {
-      base64:    base64Full,
-      base64raw: base64Full.split(',')[1],
-      nome:      file.name,
-      mime:      file.type,
-      bytes:     file.size
-    };
-    setTimeout(() => {
-      _showUploadProgress(false, 0);
-      _showArquivoInfo(file.name, file.size, file.type);
-    }, 400);
-
-    // Preenche nome do arquivo automaticamente se vazio
-    const nomeInput = document.querySelector('#form-documento [name="nome_arquivo"]');
-    if (nomeInput && !nomeInput.value) nomeInput.value = file.name;
-  };
-  reader.onerror = () => {
-    _showUploadProgress(false, 0);
-    showToast('Erro ao ler o arquivo.', 'error');
-  };
-  reader.readAsDataURL(file);
+  // Preenche nome do arquivo automaticamente se vazio
+  const nomeInput = document.querySelector('#form-documento [name="nome_arquivo"]');
+  if (nomeInput && !nomeInput.value) nomeInput.value = file.name;
 }
 
 function _showUploadProgress(show, pct) {
@@ -605,11 +584,32 @@ async function saveDocumento() {
     if (!payload.rubrica_id) payload.rubrica_id = null;
     if (!payload.despesa_id) payload.despesa_id = null;
 
-    // Arquivo base64
+    // FASE 2: Upload do arquivo para Supabase Storage
     if (temArquivo) {
-      payload.arquivo_base64 = _docArquivoSelecionado.base64raw;
-      payload.mime_type      = _docArquivoSelecionado.mime;
-      payload.tamanho_bytes  = _docArquivoSelecionado.bytes;
+      _showUploadProgress(true, 10);
+      try {
+        const path = Storage.makePath('documentos', _docArquivoSelecionado.nome);
+        const url  = await Storage.upload(_docArquivoSelecionado.file, path);
+        _showUploadProgress(true, 80);
+        payload.url           = url;
+        payload.mime_type     = _docArquivoSelecionado.mime;
+        payload.tamanho_bytes = _docArquivoSelecionado.bytes;
+      } catch(storageErr) {
+        // Fallback: base64 local (para não perder o arquivo)
+        console.warn('[Doc] Storage indisponível, usando base64:', storageErr.message);
+        const b64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = ev => resolve(ev.target.result.split(',')[1]);
+          reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+          reader.readAsDataURL(_docArquivoSelecionado.file);
+        });
+        payload.arquivo_base64 = b64;
+        payload.mime_type      = _docArquivoSelecionado.mime;
+        payload.tamanho_bytes  = _docArquivoSelecionado.bytes;
+        showToast('Arquivo salvo localmente (Storage offline)', 'warning');
+      } finally {
+        _showUploadProgress(false, 0);
+      }
     }
 
     let saved;
@@ -642,24 +642,31 @@ async function viewDocumento(id) {
   }
   if (!doc) { showToast('Documento não encontrado.', 'error'); return; }
 
+  // FASE 2: URL do Supabase Storage (campo 'url')
+  if (doc.url && doc.url.startsWith('http')) {
+    window.open(doc.url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  // URL externa
+  if (doc.url_externo) {
+    window.open(doc.url_externo, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  // Legado: arquivo_base64
   if (doc.arquivo_base64) {
-    // Reconstrói data URL e abre em nova aba
-    const mime  = doc.mime_type || 'application/pdf';
+    const mime    = doc.mime_type || 'application/pdf';
     const dataUrl = `data:${mime};base64,${doc.arquivo_base64}`;
-    const blob  = dataURLtoBlob(dataUrl);
+    const blob    = dataURLtoBlob(dataUrl);
     const blobUrl = URL.createObjectURL(blob);
     const win = window.open(blobUrl, '_blank');
-    if (!win) {
-      // fallback: download
-      _downloadBlob(blob, doc.nome_arquivo || 'documento');
-    }
-    // Revoga após 60s
+    if (!win) _downloadBlob(blob, doc.nome_arquivo || 'documento');
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-  } else if (doc.url_externo) {
-    window.open(doc.url_externo, '_blank', 'noopener,noreferrer');
-  } else {
-    showToast('Este documento não possui arquivo anexado nem URL.', 'error');
+    return;
   }
+
+  showToast('Este documento não possui arquivo anexado nem URL.', 'error');
 }
 
 async function downloadDocumento(id) {
@@ -667,7 +674,20 @@ async function downloadDocumento(id) {
   if (!doc) {
     try { doc = await DB.getOne('ong_documentos', id); } catch(e) {}
   }
-  if (!doc || !doc.arquivo_base64) {
+  if (!doc) { showToast('Arquivo não disponível para download.', 'error'); return; }
+
+  // FASE 2: URL do Storage — abre em nova aba (download via header do browser)
+  if (doc.url && doc.url.startsWith('http')) {
+    const a = document.createElement('a');
+    a.href = doc.url;
+    a.download = doc.nome_arquivo || 'documento';
+    a.target = '_blank';
+    a.click();
+    return;
+  }
+
+  // Legado: base64
+  if (!doc.arquivo_base64) {
     showToast('Arquivo não disponível para download.', 'error');
     return;
   }
@@ -901,6 +921,106 @@ async function renderDocumentosSecaoPrestacao(projId) {
     console.error('[renderDocumentosSecaoPrestacao]', err);
     return `<div class="alert alert-warning">Erro ao carregar documentos.</div>`;
   }
+}
+
+/* ══════════════════════════════════════════════════
+   MODO GALERIA — Visualização como grid de cards
+══════════════════════════════════════════════════ */
+let _docViewMode = 'tabela'; // 'tabela' | 'galeria'
+
+function toggleDocViewMode() {
+  _docViewMode = _docViewMode === 'tabela' ? 'galeria' : 'tabela';
+  const btn   = document.getElementById('btn-doc-view-toggle');
+  const tbody = document.getElementById('docs-tbody');
+  const table = document.querySelector('#page-documentos .table-wrapper');
+  const gal   = document.getElementById('docs-galeria-wrap');
+
+  if (_docViewMode === 'galeria') {
+    if (btn) { btn.innerHTML = '<i class="fas fa-list"></i> Lista'; btn.title = 'Ver em lista'; }
+    if (table) table.style.display = 'none';
+    _renderDocGaleria(documentosData);
+  } else {
+    if (btn) { btn.innerHTML = '<i class="fas fa-th"></i> Galeria'; btn.title = 'Ver como galeria'; }
+    if (table) table.style.display = '';
+    if (gal) gal.innerHTML = '';
+  }
+}
+
+function _renderDocGaleria(docs) {
+  let wrap = document.getElementById('docs-galeria-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'docs-galeria-wrap';
+    const table = document.querySelector('#page-documentos .table-wrapper');
+    if (table) table.insertAdjacentElement('afterend', wrap);
+    else document.querySelector('#page-documentos')?.appendChild(wrap);
+  }
+
+  if (!docs || docs.length === 0) {
+    wrap.innerHTML = `<div class="prest-empty"><i class="fas fa-folder-open"></i><p>Nenhum documento para exibir.</p></div>`;
+    return;
+  }
+
+  // Prepara docs para lightbox
+  _prestState && (_prestState.documentos = docs);
+
+  wrap.innerHTML = `<div class="doc-galeria-modo">
+    ${docs.map((d, i) => {
+      const cfg  = getTipoConfig(d.tipo_documento);
+      const isImg = _isDocImagem(d);
+      const thumb = isImg
+        ? (d.arquivo_base64 ? `<img src="${d.arquivo_base64.startsWith('data:') ? d.arquivo_base64 : 'data:'+d.mime_type+';base64,'+d.arquivo_base64}" loading="lazy">`
+           : d.url_externo  ? `<img src="${d.url_externo}" loading="lazy">`
+           : `<div class="doc-galeria-thumb-icon"><i class="fas ${cfg.icon}"></i></div>`)
+        : `<div class="doc-galeria-thumb-icon" style="color:${_docTypColor(cfg.cor)};"><i class="fas ${cfg.icon}"></i></div>`;
+      return `
+        <div class="doc-galeria-card" onclick="_openDocGaleriaItem(${i})">
+          <div class="doc-galeria-thumb ${isImg ? 'doc-galeria-thumb-img' : ''}">
+            ${thumb}
+            <div class="doc-galeria-overlay"><i class="fas fa-search-plus"></i></div>
+          </div>
+          <div class="doc-galeria-info">
+            <div class="doc-galeria-tipo">${renderTipoBadge(d.tipo_documento)}</div>
+            <div class="doc-galeria-nome">${d.nome_arquivo||d.numero_documento||'—'}</div>
+            <div class="doc-galeria-meta">
+              ${d.data_documento ? `<span>${formatDate(d.data_documento)}</span>` : ''}
+              ${d.valor ? `<span>${formatBRL(d.valor)}</span>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function _openDocGaleriaItem(idx) {
+  // Usa o lightbox da Prestação de Contas se disponível
+  if (typeof openDocLightbox === 'function' && typeof _prestState !== 'undefined') {
+    _prestState.documentos = documentosData;
+    _prestState.lightboxImgs = documentosData;
+    openDocLightbox(idx);
+  } else {
+    // Fallback: abre o documento diretamente
+    viewDocumento(documentosData[idx]?.id);
+  }
+}
+
+function _isDocImagem(doc) {
+  if (!doc) return false;
+  const mime = doc.mime_type || '';
+  const nome = (doc.nome_arquivo || '').toLowerCase();
+  const ext  = nome.split('.').pop();
+  const b64  = doc.arquivo_base64 || '';
+  return (
+    mime.startsWith('image/') ||
+    b64.startsWith('data:image') ||
+    ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext) ||
+    doc.tipo_documento === 'Foto / Registro'
+  );
+}
+
+function _docTypColor(cor) {
+  const m = { blue:'#2563eb', green:'#059669', teal:'#0891b2', orange:'#d97706', purple:'#7c3aed', pink:'#db2777', gray:'#64748b', red:'#dc2626' };
+  return m[cor] || '#64748b';
 }
 
 /* ══════════════════════════════════════════════════
