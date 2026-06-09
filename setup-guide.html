@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONG Gestor — Guia de Configuração Supabase</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0c1426;
+      --surface: #141e33;
+      --surface2: #1a2540;
+      --border: #2a3550;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --code-bg: #0a0f1e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .page-header {
+      background: linear-gradient(135deg, #0c1426 0%, #1a2540 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .page-header .icon { font-size: 2rem; color: var(--primary); }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+    .page-header p  { font-size: .85rem; color: var(--text-muted); margin-top: 2px; }
+
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 90px); }
+
+    /* ── Sidebar nav ── */
+    .guide-nav {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: calc(100vh - 90px);
+      overflow-y: auto;
+    }
+    .nav-section { padding: 0 16px 8px; font-size: .7rem; font-weight: 700;
+      color: var(--text-muted); letter-spacing: .1em; text-transform: uppercase; margin-top: 16px; }
+    .nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 10px 20px;
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: .85rem; text-align: left;
+      border-left: 3px solid transparent; transition: all .15s;
+    }
+    .nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .nav-btn.active { background: var(--surface2); color: var(--primary);
+      border-left-color: var(--primary); font-weight: 600; }
+    .nav-btn .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--border); color: var(--text-muted);
+      font-size: .7rem; font-weight: 700; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .nav-btn.done .step-num { background: var(--success); color: #fff; }
+    .nav-btn.active .step-num { background: var(--primary); color: #fff; }
+
+    /* ── Main content ── */
+    .guide-content { padding: 32px; max-width: 900px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Step header ── */
+    .step-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 24px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .step-badge {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      font-size: 1rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-title h2 { font-size: 1.2rem; font-weight: 700; }
+    .step-title p  { font-size: .85rem; color: var(--text-muted); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: .85rem; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .08em; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title i { color: var(--primary); }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: .85rem;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .alert-info    { background: rgba(59,130,246,.15); border-left: 3px solid var(--primary); }
+    .alert-warning { background: rgba(245,158,11,.12); border-left: 3px solid var(--warning); }
+    .alert-danger  { background: rgba(239,68,68,.12);  border-left: 3px solid var(--danger);  }
+    .alert-success { background: rgba(16,185,129,.12); border-left: 3px solid var(--success); }
+
+    /* ── Code blocks ── */
+    .code-wrap { position: relative; margin-bottom: 16px; }
+    pre.code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 50px 16px 16px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: .78rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .btn-copy {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-muted); padding: 5px 10px;
+      border-radius: 5px; font-size: .72rem; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-copy:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ── Step list ── */
+    .step-list { list-style: none; padding: 0; }
+    .step-list li {
+      display: flex; gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-list .num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      font-size: .75rem; font-weight: 700; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-list .content { flex: 1; }
+    .step-list strong { display: block; font-size: .9rem; margin-bottom: 4px; }
+    .step-list span { font-size: .82rem; color: var(--text-muted); }
+
+    /* ── Tags / badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 20px;
+      font-size: .72rem; font-weight: 600;
+    }
+    .badge-blue   { background: rgba(59,130,246,.2);   color: #60a5fa; }
+    .badge-green  { background: rgba(16,185,129,.2);   color: #34d399; }
+    .badge-yellow { background: rgba(245,158,11,.2);   color: #fbbf24; }
+    .badge-red    { background: rgba(239,68,68,.2);    color: #f87171; }
+
+    .highlight { background: rgba(59,130,246,.2); color: #93c5fd;
+      padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: .85em; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 18px; border-radius: 7px; border: none;
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger  { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-outline {
+      background: none; border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Input / form ── */
+    .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+    .form-row .form-group { flex: 1; }
+    .form-group label {
+      display: block; font-size: .78rem; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase;
+    }
+    .form-control {
+      width: 100%; padding: 9px 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text); font-size: .85rem;
+      outline: none; transition: border-color .15s;
+    }
+    .form-control:focus { border-color: var(--primary); }
+
+    /* ── Diagnostic log ── */
+    #diag-log {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: monospace;
+      font-size: .78rem;
+      line-height: 1.8;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .log-ok   { color: var(--success); }
+    .log-err  { color: var(--danger); }
+    .log-warn { color: var(--warning); }
+    .log-info { color: var(--text-muted); }
+
+    /* ── Convites table ── */
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table.data-table { width: 100%; border-collapse: collapse; }
+    table.data-table th {
+      background: var(--surface2); padding: 10px 14px;
+      font-size: .75rem; font-weight: 700; text-align: left;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em;
+    }
+    table.data-table td {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      font-size: .82rem; vertical-align: middle;
+    }
+    table.data-table tr:hover td { background: var(--surface2); }
+    .codigo-cell {
+      font-family: monospace; font-size: .9rem;
+      font-weight: 700; letter-spacing: 2px; color: #93c5fd;
+    }
+
+    /* ── Connection status ── */
+    .conn-status {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 18px; border-radius: 8px;
+      border: 1px solid var(--border); margin-bottom: 20px;
+    }
+    .conn-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--text-muted); flex-shrink: 0;
+    }
+    .conn-dot.ok   { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .conn-dot.err  { background: var(--danger);  box-shadow: 0 0 8px var(--danger);  }
+    .conn-dot.wait { background: var(--warning); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+
+    /* ── Navigation buttons ── */
+    .step-nav {
+      display: flex; justify-content: space-between;
+      margin-top: 32px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Image placeholder ── */
+    .img-guide {
+      border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; margin: 12px 0;
+    }
+    .img-guide-label {
+      background: var(--surface2); padding: 8px 14px;
+      font-size: .75rem; color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .img-guide-body {
+      padding: 20px; text-align: center; color: var(--text-muted);
+      font-size: .82rem;
+    }
+
+    /* ── Path breadcrumb ── */
+    .path {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: .8rem; color: var(--text-muted);
+    }
+    .path .sep { color: var(--border); }
+    .path .seg { color: var(--text); font-weight: 500; }
+
+    /* mobile */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .guide-nav { display: none; }
+      .guide-content { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="page-header">
+  <div class="icon"><i class="fas fa-cogs"></i></div>
+  <div>
+    <h1>ONG Gestor — Guia de Configuração Supabase</h1>
+    <p>Siga cada etapa na ordem para configurar o sistema corretamente do zero</p>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ══ SIDEBAR NAV ══ -->
+  <nav class="guide-nav" id="guide-nav">
+    <div class="nav-section">Configuração</div>
+    <button class="nav-btn active" onclick="showSection(0)">
+      <span class="step-num" id="snum-0">1</span>
+      Pré-requisitos &amp; Chave API
+    </button>
+    <button class="nav-btn" onclick="showSection(1)">
+      <span class="step-num" id="snum-1">2</span>
+      Executar SQL (Tabelas)
+    </button>
+    <button class="nav-btn" onclick="showSection(2)">
+      <span class="step-num" id="snum-2">3</span>
+      Configurar Auth
+    </button>
+    <button class="nav-btn" onclick="showSection(3)">
+      <span class="step-num" id="snum-3">4</span>
+      Bucket Storage
+    </button>
+    <div class="nav-section">Convites &amp; Usuários</div>
+    <button class="nav-btn" onclick="showSection(4)">
+      <span class="step-num" id="snum-4">5</span>
+      Gerenciar Convites
+    </button>
+    <button class="nav-btn" onclick="showSection(5)">
+      <span class="step-num" id="snum-5">6</span>
+      Primeiro Login
+    </button>
+    <div class="nav-section">Diagnóstico</div>
+    <button class="nav-btn" onclick="showSection(6)">
+      <span class="step-num" id="snum-6">7</span>
+      Testar Conexão
+    </button>
+    <button class="nav-btn" onclick="showSection(7)">
+      <span class="step-num" id="snum-7">8</span>
+      Migrar Dados
+    </button>
+  </nav>
+
+  <!-- ══ CONTENT ══ -->
+  <main class="guide-content">
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 0 — PRÉ-REQUISITOS
+    ════════════════════════════════════════════ -->
+    <section class="section active" id="sec-0">
+      <div class="step-header">
+        <div class="step-badge">1</div>
+        <div class="step-title">
+          <h2>Pré-requisitos &amp; Anon Key</h2>
+          <p>Verifique sua conta Supabase e atualize a chave de API no sistema</p>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div><strong>Erro HTTP 401?</strong> Isso significa que a chave de API (anon key) está incorreta ou expirada. Siga os passos abaixo.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-list-ol"></i> Passo a passo</div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse seu projeto no Supabase</strong>
+              <span>Vá em <a href="https://supabase.com/dashboard" target="_blank" style="color:var(--primary)">supabase.com/dashboard</a> e clique no seu projeto</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Encontre a Anon Key</strong>
+              <span>No menu lateral clique em <strong>Project Settings</strong> → <strong>API</strong>. Procure a linha <em>"anon public"</em> e copie o valor inteiro (começa com <code>eyJ...</code>)</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">3</div>
+            <div class="content">
+              <strong>Encontre a Project URL</strong>
+              <span>Na mesma tela, copie a <em>Project URL</em> — formato: <code>https://xxxxxxxxxxxx.supabase.co</code></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">4</div>
+            <div class="content">
+              <strong>Atualize o arquivo <code>js/api.js</code></strong>
+              <span>Abra o arquivo e localize as 2 constantes abaixo — cole os valores copiados</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-code"></i> Constantes para atualizar em <code>js/api.js</code></div>
+        <div class="code-wrap">
+          <pre class="code-block" id="code-apikeys">// ── Linha 1-2 do arquivo js/api.js ──────────────────────
+const SUPABASE_URL = 'https://SEU_PROJETO.supabase.co';
+const SUPABASE_KEY = 'eyJhbGc...SUA_ANON_KEY_COMPLETA...';</pre>
+          <button class="btn-copy" onclick="copyCode('code-apikeys')"><i class="fas fa-copy"></i> Copiar</button>
+        </div>
+        <div class="alert alert-info" style="margin-top:12px;margin-bottom:0;">
+          <i class="fas fa-info-circle"></i>
+          <div>A anon key começa com <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</code> — se começar com <code>sb_publishable_</code> é o formato novo; verifique se o seu projeto está usando o SDK v2 ou rode o diagnóstico abaixo.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-plug"></i> Teste rápido de conexão</div>
+        <div id="conn-status-0" class="conn-status">
+          <div class="conn-dot" id="conn-dot-0"></div>
+          <div>
+            <strong id="conn-text-0">Clique em "Testar" para verificar a conexão</strong>
+            <div id="conn-detail-0" style="font-size:.78rem;color:var(--text-muted);margin-top:2px;"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="testarConexao()">
+          <i class="fas fa-bolt"></i> Testar Conexão Agora
+        </button>
+        <div id="conn-log" style="margin-top:14px;display:none;">
+          <div id="diag-log" style=""></div>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <div></div>
+        <button class="btn btn-primary" onclick="showSection(1)">Próximo: Criar Tabelas <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 1 — EXECUTAR SQL
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-1">
+      <div class="step-header">
+        <div class="step-badge">2</div>
+        <div class="step-title">
+          <h2>Executar SQL — Criação das Tabelas</h2>
+          <p>Cria todas as tabelas, RLS, triggers e sistema de convites</p>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>Este passo é o mais importante. Execute o SQL completo <strong>uma única vez</strong>. O script é idempotente (pode ser re-executado sem duplicar dados).</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-list-ol"></i> Como executar o SQL</div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Abra o SQL Editor no Supabase</strong>
+              <span>Menu lateral → <strong>SQL Editor</strong> → clique em <strong>"+ New query"</strong></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Copie o conteúdo de <code>supabase_setup.sql</code></strong>
+              <span>Abra o arquivo no editor de código, selecione tudo (Ctrl+A) e copie (Ctrl+C)</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">3</div>
+            <div class="content">
+              <strong>Cole no SQL Editor e clique em RUN</strong>
+              <span>Cole o código (Ctrl+V) na área de query e clique no botão verde <strong>"RUN"</strong> (ou F5)</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">4</div>
+            <div class="content">
+              <strong>Verifique os resultados</strong>
+              <span>O script retornará uma tabela mostrando todas as tabelas com <span class="badge badge-green">✓ user_id</span> e as políticas RLS ativas</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-table"></i> Tabelas que serão criadas</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_projetos</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Projetos/convênios</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_rubricas</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Rubricas orçamentárias</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_despesas</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Lançamentos financeiros</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_metas</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Metas físicas</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_cronograma</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Cronograma de atividades</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_documentos</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Documentos e anexos</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_auditoria</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Log de auditoria MROSC</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-family:monospace;font-size:.8rem;color:#93c5fd;">ong_convites</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">Códigos de autorização</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-shield-alt"></i> O que o SQL configura automaticamente</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.82rem;">
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <i class="fas fa-check" style="color:var(--success);margin-top:2px;"></i>
+            <span><strong>RLS (Row Level Security)</strong> — cada ONG vê apenas seus próprios dados via <code>auth.uid() = user_id</code></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <i class="fas fa-check" style="color:var(--success);margin-top:2px;"></i>
+            <span><strong>Trigger automático</strong> — <code>valor_executado</code> nas rubricas é recalculado automaticamente ao lançar despesas</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <i class="fas fa-check" style="color:var(--success);margin-top:2px;"></i>
+            <span><strong>Auditoria</strong> — todas as mudanças em despesas, rubricas e projetos são registradas na <code>ong_auditoria</code></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <i class="fas fa-check" style="color:var(--success);margin-top:2px;"></i>
+            <span><strong>3 códigos iniciais</strong> de convite já criados: <code>ONG2024</code>, <code>ADMIN001</code>, <code>MROSC2024</code></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(0)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <button class="btn btn-primary" onclick="showSection(2)">Próximo: Configurar Auth <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 2 — CONFIGURAR AUTH
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-2">
+      <div class="step-header">
+        <div class="step-badge">3</div>
+        <div class="step-title">
+          <h2>Configurar Autenticação</h2>
+          <p>Ative o provedor de e-mail e configure os URLs corretos</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-envelope"></i> Passo 1 — Ativar Email Provider</div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse Authentication → Providers</strong>
+              <span class="path"><span class="seg">Supabase Dashboard</span><span class="sep"> › </span><span class="seg">Authentication</span><span class="sep"> › </span><span class="seg">Providers</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Clique em "Email" e certifique que está habilitado</strong>
+              <span>O toggle deve estar verde (ON). Habilite também a opção <strong>"Enable email confirmations"</strong> — recomendado para segurança</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-link"></i> Passo 2 — Configurar Site URL</div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse Authentication → URL Configuration</strong>
+              <span class="path"><span class="seg">Authentication</span><span class="sep"> › </span><span class="seg">URL Configuration</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Site URL</strong>
+              <span>Coloque a URL onde o sistema está hospedado. Em desenvolvimento use: <code>http://localhost:3000</code></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">3</div>
+            <div class="content">
+              <strong>Redirect URLs</strong>
+              <span>Adicione a URL do seu site + <code>/index.html</code>. Em produção será algo como <code>https://seusite.genspark.site/index.html</code></span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-mail-bulk"></i> Passo 3 — Template de e-mail em português</div>
+        <div class="alert alert-info" style="margin-bottom:14px;">
+          <i class="fas fa-info-circle"></i>
+          <div>Opcional mas recomendado: personalize o e-mail de confirmação em português para seus usuários.</div>
+        </div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse Authentication → Email Templates</strong>
+              <span class="path"><span class="seg">Authentication</span><span class="sep"> › </span><span class="seg">Email Templates</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Edite o template "Confirm signup"</strong>
+              <span>Substitua o conteúdo pelo HTML abaixo</span>
+            </div>
+          </li>
+        </ol>
+        <div class="code-wrap">
+          <pre class="code-block" id="code-email-template">&lt;h2&gt;Confirme seu cadastro — ONG Gestor&lt;/h2&gt;
+&lt;p&gt;Olá! Clique no link abaixo para confirmar seu e-mail e ativar sua conta:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{{ .ConfirmationURL }}"&gt;✅ Confirmar meu e-mail&lt;/a&gt;&lt;/p&gt;
+&lt;p style="color:#666;font-size:12px;"&gt;Se você não solicitou este cadastro, ignore este e-mail.&lt;/p&gt;</pre>
+          <button class="btn-copy" onclick="copyCode('code-email-template')"><i class="fas fa-copy"></i> Copiar</button>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(1)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <button class="btn btn-primary" onclick="showSection(3)">Próximo: Bucket Storage <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 3 — BUCKET STORAGE
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-3">
+      <div class="step-header">
+        <div class="step-badge">4</div>
+        <div class="step-title">
+          <h2>Criar Bucket de Storage</h2>
+          <p>Para armazenar notas fiscais, documentos e logos das ONGs</p>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>O bucket <strong>precisa ser criado manualmente</strong> pelo dashboard do Supabase — não é possível criar via SQL. O SQL já criou as políticas de acesso.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-list-ol"></i> Como criar o bucket</div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse Storage no Supabase</strong>
+              <span class="path"><span class="seg">Supabase Dashboard</span><span class="sep"> › </span><span class="seg">Storage</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Clique em "New bucket"</strong>
+              <span>Botão no canto superior direito ou "+ New bucket"</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">3</div>
+            <div class="content">
+              <strong>Nome do bucket: <code>ong-arquivos</code></strong>
+              <span>⚠ Digite <strong>exatamente</strong> esse nome (com hífen, sem espaços, tudo minúsculo)</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">4</div>
+            <div class="content">
+              <strong>Configurações do bucket</strong>
+              <span>Deixe <strong>Private</strong> (não público) — as políticas RLS já controlam o acesso por usuário</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">5</div>
+            <div class="content">
+              <strong>Tamanho máximo de arquivo</strong>
+              <span>Recomendado: <strong>10 MB</strong> (suficiente para PDFs e imagens de NF)</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">6</div>
+            <div class="content">
+              <strong>Clique em "Save" ou "Create bucket"</strong>
+              <span>O bucket aparecerá na lista com o ícone de pasta</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-folder-tree"></i> Estrutura de pastas no bucket</div>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;">As pastas são criadas automaticamente ao fazer o primeiro upload:</p>
+        <div class="code-wrap">
+          <pre class="code-block">ong-arquivos/
+├── {user_id}/
+│   ├── nf/          ← Notas Fiscais (PDF, JPG, PNG)
+│   ├── logos/       ← Logos das ONGs (PNG, JPG)
+│   └── documentos/  ← Documentos e anexos (PDF, DOC)</pre>
+          <button class="btn-copy" onclick="copyCode(this.previousElementSibling)"><i class="fas fa-copy"></i></button>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(2)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <button class="btn btn-primary" onclick="showSection(4)">Próximo: Gerenciar Convites <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 4 — GERENCIAR CONVITES
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-4">
+      <div class="step-header">
+        <div class="step-badge">5</div>
+        <div class="step-title">
+          <h2>Sistema de Convites — Autorizar Cadastros</h2>
+          <p>Controle quem pode criar conta no sistema usando códigos de convite</p>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>
+          <strong>Como funciona:</strong> Para criar conta no ONG Gestor, o usuário precisa de um
+          <strong>código de convite válido</strong>. Você gera os códigos aqui e distribui para as ONGs que terão acesso.
+          Cada código é de <strong>uso único</strong> — após o primeiro cadastro, é desativado automaticamente.
+        </div>
+      </div>
+
+      <!-- Connection check for convites -->
+      <div id="conn-convites" class="conn-status" style="display:none;">
+        <div class="conn-dot wait" id="dot-convites"></div>
+        <div id="text-convites">Verificando conexão...</div>
+      </div>
+
+      <!-- Convites manager tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;">
+        <button class="tab-btn active" id="tab-listar" onclick="switchTab('listar')"
+          style="padding:10px 16px;background:none;border:none;border-bottom:2px solid var(--primary);color:var(--primary);font-weight:600;cursor:pointer;font-size:.85rem;">
+          <i class="fas fa-list"></i> Listar Convites
+        </button>
+        <button class="tab-btn" id="tab-criar" onclick="switchTab('criar')"
+          style="padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;font-size:.85rem;">
+          <i class="fas fa-plus"></i> Criar Convite
+        </button>
+        <button class="tab-btn" id="tab-sql" onclick="switchTab('sql')"
+          style="padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;font-size:.85rem;">
+          <i class="fas fa-terminal"></i> Via SQL
+        </button>
+      </div>
+
+      <!-- Tab: Listar -->
+      <div id="tab-content-listar">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:.85rem;color:var(--text-muted);" id="convites-count">–</span>
+          <button class="btn btn-outline" onclick="carregarConvites()" style="font-size:.8rem;padding:7px 14px;">
+            <i class="fas fa-sync"></i> Atualizar
+          </button>
+        </div>
+        <div id="conv-loading" style="text-align:center;padding:24px;color:var(--text-muted);">
+          <i class="fas fa-spinner fa-spin"></i> Carregando convites...
+        </div>
+        <div id="conv-table-wrap" class="table-wrap" style="display:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>ONG_ID</th>
+                <th>E-mail destino</th>
+                <th>Expira em</th>
+                <th>Descrição</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="conv-tbody"></tbody>
+          </table>
+        </div>
+        <div id="conv-empty" style="display:none;text-align:center;padding:32px;color:var(--text-muted);">
+          <i class="fas fa-ticket-alt" style="font-size:2rem;opacity:.3;display:block;margin-bottom:10px;"></i>
+          Nenhum convite encontrado. Crie um na aba "Criar Convite".
+        </div>
+        <div id="conv-error" style="display:none;" class="alert alert-danger">
+          <i class="fas fa-exclamation-circle"></i>
+          <div id="conv-error-msg"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Criar -->
+      <div id="tab-content-criar" style="display:none;">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-plus-circle"></i> Novo código de convite</div>
+
+          <!-- Role info cards -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+            <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:10px;">
+              <div style="font-size:.78rem;font-weight:700;color:#60a5fa;margin-bottom:4px;"><i class="fas fa-user-shield"></i> ADMIN</div>
+              <div style="font-size:.72rem;color:var(--text-muted);">Acesso total: criar, editar, excluir, ver Setup e Diagnóstico</div>
+            </div>
+            <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:10px;">
+              <div style="font-size:.78rem;font-weight:700;color:#34d399;margin-bottom:4px;"><i class="fas fa-user-tie"></i> PARCEIRO</div>
+              <div style="font-size:.72rem;color:var(--text-muted);">Lançar e editar dados. Não pode excluir nem ver configurações</div>
+            </div>
+            <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px;">
+              <div style="font-size:.78rem;font-weight:700;color:#fbbf24;margin-bottom:4px;"><i class="fas fa-eye"></i> VISUALIZADOR</div>
+              <div style="font-size:.72rem;color:var(--text-muted);">Somente consulta. Dashboard, projetos e prestação de contas</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Código <span style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="new-codigo"
+                     placeholder="Ex: ADMIN2025" maxlength="30"
+                     style="text-transform:uppercase;letter-spacing:2px;font-weight:600;"
+                     oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="form-group" style="flex:.4;min-width:120px;">
+              <label>Ou gerar aleatório</label>
+              <button class="btn btn-outline" onclick="gerarCodigoAleatorio()" style="width:100%;">
+                <i class="fas fa-dice"></i> Gerar
+              </button>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>Perfil de Acesso <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="new-role">
+              <option value="ADMIN">🛡️ ADMIN — Acesso total</option>
+              <option value="PARCEIRO">👔 PARCEIRO — Lançar dados (sem excluir)</option>
+              <option value="VISUALIZADOR" selected>👁️ VISUALIZADOR — Somente leitura</option>
+            </select>
+          </div>
+          <!-- ong_id: identifica a qual ONG o convidado pertencerá -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:6px;">
+              <i class="fas fa-building" style="color:var(--primary);"></i>
+              ONG_ID (UUID da ONG) <span style="color:var(--danger)">*</span>
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400;">— isola os dados da ONG</span>
+            </label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" class="form-control" id="new-ong-id"
+                     placeholder="Cole aqui o UUID da ONG (ex: da sua conta de Admin)"
+                     style="font-family:monospace;font-size:.8rem;flex:1;">
+              <button class="btn btn-outline" onclick="preencherOngIdAtual()" title="Usar meu user_id como ong_id" style="flex-shrink:0;padding:0 12px;">
+                <i class="fas fa-user-tag"></i> Meu ID
+              </button>
+            </div>
+            <small style="color:var(--text-muted);font-size:.7rem;margin-top:3px;display:block;">
+              💡 O ong_id define quais dados o usuário convidado poderá ver. Use o <strong>user_id do ADMIN</strong> da ONG para todos os convites da mesma ONG.
+            </small>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>E-mail destino (opcional)</label>
+              <input type="email" class="form-control" id="new-email"
+                     placeholder="Deixe vazio para aceitar qualquer e-mail">
+            </div>
+            <div class="form-group">
+              <label>Expira em (opcional)</label>
+              <input type="date" class="form-control" id="new-expira">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label>Descrição</label>
+            <input type="text" class="form-control" id="new-descricao"
+                   placeholder="Ex: Convite para Instituto ABC">
+          </div>
+          <div id="criar-msg" style="font-size:.82rem;min-height:16px;margin-bottom:12px;"></div>
+          <button class="btn btn-success" onclick="criarConvite()" id="btn-criar-convite">
+            <i class="fas fa-save"></i> Criar Convite
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab: SQL -->
+      <div id="tab-content-sql" style="display:none;">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-terminal"></i> Gerenciar convites diretamente via SQL</div>
+          <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px;">
+            Execute os comandos abaixo no <strong>SQL Editor</strong> do Supabase para gerenciar convites sem precisar de autenticação:
+          </p>
+
+          <p style="font-size:.82rem;margin-bottom:6px;font-weight:600;">▶ Criar convite simples:</p>
+          <div class="code-wrap">
+            <pre class="code-block" id="sql-criar-convite">INSERT INTO public.ong_convites (codigo, ativo, descricao, expira_em)
+VALUES ('MEU_CODIGO', true, 'Descrição do convite', NOW() + INTERVAL '30 days');</pre>
+            <button class="btn-copy" onclick="copyCode('sql-criar-convite')"><i class="fas fa-copy"></i> Copiar</button>
+          </div>
+
+          <p style="font-size:.82rem;margin-bottom:6px;font-weight:600;">▶ Criar convite para e-mail específico:</p>
+          <div class="code-wrap">
+            <pre class="code-block" id="sql-criar-email">INSERT INTO public.ong_convites (codigo, ativo, email_destino, descricao, expira_em)
+VALUES ('ONG_EXCLUSIVO', true, 'contato@ong.org.br', 'Convite exclusivo', NOW() + INTERVAL '7 days');</pre>
+            <button class="btn-copy" onclick="copyCode('sql-criar-email')"><i class="fas fa-copy"></i> Copiar</button>
+          </div>
+
+          <p style="font-size:.82rem;margin-bottom:6px;font-weight:600;">▶ Listar todos os convites:</p>
+          <div class="code-wrap">
+            <pre class="code-block" id="sql-listar">SELECT codigo, ativo, email_destino, expira_em, usado_por, usado_em, descricao
+FROM public.ong_convites
+ORDER BY criado_em DESC;</pre>
+            <button class="btn-copy" onclick="copyCode('sql-listar')"><i class="fas fa-copy"></i> Copiar</button>
+          </div>
+
+          <p style="font-size:.82rem;margin-bottom:6px;font-weight:600;">▶ Revogar/desativar um convite:</p>
+          <div class="code-wrap">
+            <pre class="code-block" id="sql-revogar">UPDATE public.ong_convites SET ativo = false WHERE codigo = 'MEU_CODIGO';</pre>
+            <button class="btn-copy" onclick="copyCode('sql-revogar')"><i class="fas fa-copy"></i> Copiar</button>
+          </div>
+
+          <p style="font-size:.82rem;margin-bottom:6px;font-weight:600;">▶ Gerar 5 convites aleatórios de uma vez:</p>
+          <div class="code-wrap">
+            <pre class="code-block" id="sql-batch">INSERT INTO public.ong_convites (codigo, ativo, descricao, expira_em)
+SELECT
+  'ONG' || UPPER(SUBSTRING(gen_random_uuid()::text, 1, 8)),
+  true,
+  'Convite em lote #' || gs,
+  NOW() + INTERVAL '90 days'
+FROM generate_series(1, 5) AS gs;</pre>
+            <button class="btn-copy" onclick="copyCode('sql-batch')"><i class="fas fa-copy"></i> Copiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(3)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <button class="btn btn-primary" onclick="showSection(5)">Próximo: Primeiro Login <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 5 — PRIMEIRO LOGIN
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-5">
+      <div class="step-header">
+        <div class="step-badge">6</div>
+        <div class="step-title">
+          <h2>Primeiro Login e Cadastro</h2>
+          <p>Como criar a primeira conta e acessar o sistema</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-user-plus"></i> Fluxo de cadastro</div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse o ONG Gestor (<code>index.html</code>)</strong>
+              <span>A tela de login aparecerá automaticamente</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Clique em "Criar conta gratuita"</strong>
+              <span>O painel de cadastro será exibido</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">3</div>
+            <div class="content">
+              <strong>Preencha: Nome da ONG, E-mail, Senha</strong>
+              <span>A senha deve ter no mínimo 6 caracteres</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">4</div>
+            <div class="content">
+              <strong>Insira o Código de Convite</strong>
+              <span>Use um dos códigos criados: <span class="highlight">ONG2024</span> ou <span class="highlight">ADMIN001</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">5</div>
+            <div class="content">
+              <strong>Clique em "Criar Conta"</strong>
+              <span>Se a confirmação de e-mail estiver ativada, verifique sua caixa de entrada e clique no link de confirmação</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">6</div>
+            <div class="content">
+              <strong>Faça login</strong>
+              <span>Após confirmar o e-mail, volte ao sistema e faça login com e-mail e senha</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-lightbulb"></i> Dica: Desativar confirmação de e-mail (dev)</div>
+        <div class="alert alert-warning" style="margin-bottom:12px;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <div>Em ambiente de desenvolvimento, você pode desativar a confirmação de e-mail para agilizar testes. <strong>Não faça isso em produção.</strong></div>
+        </div>
+        <ol class="step-list">
+          <li>
+            <div class="num">1</div>
+            <div class="content">
+              <strong>Acesse Authentication → Providers → Email</strong>
+              <span></span>
+            </div>
+          </li>
+          <li>
+            <div class="num">2</div>
+            <div class="content">
+              <strong>Desative "Enable email confirmations"</strong>
+              <span>O usuário será logado imediatamente após o cadastro</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-key"></i> Recuperar senha</div>
+        <p style="font-size:.82rem;color:var(--text-muted);">
+          Na tela de login, clique em <strong>"Esqueci minha senha"</strong>. Um e-mail com link de redefinição será enviado automaticamente via Supabase Auth.
+        </p>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(4)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <button class="btn btn-primary" onclick="showSection(6)">Próximo: Testar Conexão <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 6 — DIAGNÓSTICO
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-6">
+      <div class="step-header">
+        <div class="step-badge">7</div>
+        <div class="step-title">
+          <h2>Diagnóstico de Conexão</h2>
+          <p>Verifica todos os componentes do sistema automaticamente</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-stethoscope"></i> Diagnóstico completo</div>
+        <button class="btn btn-primary" onclick="runDiagnostico()" id="btn-diag" style="margin-bottom:16px;">
+          <i class="fas fa-play"></i> Executar Diagnóstico
+        </button>
+        <div id="diag-results" style="display:none;">
+          <div id="diag-log-full"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-question-circle"></i> Soluções para erros comuns</div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <div class="error-item" style="padding:14px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span class="badge badge-red">HTTP 401</span>
+              <strong style="font-size:.88rem;">Unauthorized</strong>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);">Anon key incorreta ou expirada. Vá em <strong>Project Settings → API</strong> e copie a nova <em>anon public key</em>. Atualize em <code>js/api.js</code>.</p>
+          </div>
+          <div class="error-item" style="padding:14px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span class="badge badge-red">HTTP 404</span>
+              <strong style="font-size:.88rem;">Not Found</strong>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);">Tabela não existe. Execute o SQL completo (<code>supabase_setup.sql</code>) no SQL Editor do Supabase.</p>
+          </div>
+          <div class="error-item" style="padding:14px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span class="badge badge-yellow">HTTP 406</span>
+              <strong style="font-size:.88rem;">Not Acceptable</strong>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);">Header <code>Accept</code> incorreto. Certifique que o código está enviando <code>Accept: application/json</code>.</p>
+          </div>
+          <div class="error-item" style="padding:14px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span class="badge badge-red">HTTP 403</span>
+              <strong style="font-size:.88rem;">Forbidden (RLS)</strong>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);">RLS bloqueando acesso. Certifique que o usuário está logado e que o <code>user_id</code> está preenchido nos registros. Execute a migração de dados se necessário.</p>
+          </div>
+          <div class="error-item" style="padding:14px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span class="badge badge-red">CORS Error</span>
+              <strong style="font-size:.88rem;">Cross-Origin Request Blocked</strong>
+            </div>
+            <p style="font-size:.82rem;color:var(--text-muted);">URL do projeto Supabase incorreta em <code>js/api.js</code>. Verifique a <code>SUPABASE_URL</code> — não pode ter barra no final.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(5)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <button class="btn btn-primary" onclick="showSection(7)">Próximo: Migrar Dados <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         SEÇÃO 7 — MIGRAÇÃO DE DADOS
+    ════════════════════════════════════════════ -->
+    <section class="section" id="sec-7">
+      <div class="step-header">
+        <div class="step-badge">8</div>
+        <div class="step-title">
+          <h2>Migrar Dados Existentes</h2>
+          <p>Se você já tinha dados sem user_id, vincule-os ao seu usuário</p>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div><strong>Só execute se necessário:</strong> se o banco estava vazio antes da configuração, pule esta etapa. Esta migração é para quem já tinha dados inseridos antes de ativar o RLS.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-database"></i> Buscar User ID</div>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;">
+          Primeiro, obtenha o UUID do seu usuário no Supabase:
+        </p>
+        <div class="code-wrap">
+          <pre class="code-block" id="sql-get-uid">-- Execute no SQL Editor para ver seus usuários
+SELECT id, email, created_at
+FROM auth.users
+ORDER BY created_at DESC
+LIMIT 10;</pre>
+          <button class="btn-copy" onclick="copyCode('sql-get-uid')"><i class="fas fa-copy"></i> Copiar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-exchange-alt"></i> Script de Migração</div>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:8px;">
+          Substitua <code>SEU_USER_ID_AQUI</code> pelo UUID obtido acima e execute no SQL Editor:
+        </p>
+        <div class="code-wrap">
+          <pre class="code-block" id="sql-migrar">DO $$
+DECLARE
+  v_uid UUID := 'SEU_USER_ID_AQUI';
+BEGIN
+  -- Migra todos os registros sem user_id para o seu usuário
+  UPDATE public.ong_projetos        SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_rubricas        SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_despesas        SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_metas           SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_cronograma      SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_documentos      SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_fases           SET user_id = v_uid WHERE user_id IS NULL;
+  UPDATE public.ong_plano_aplicacao SET user_id = v_uid WHERE user_id IS NULL;
+
+  RAISE NOTICE '✅ Migração concluída para user_id: %', v_uid;
+END $$;</pre>
+          <button class="btn-copy" onclick="copyCode('sql-migrar')"><i class="fas fa-copy"></i> Copiar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-check-double"></i> Verificação pós-migração</div>
+        <div class="code-wrap">
+          <pre class="code-block" id="sql-verify">-- Verifica se ainda há registros sem user_id
+SELECT
+  'ong_projetos' AS tabela,
+  COUNT(*) FILTER (WHERE user_id IS NULL) AS sem_uid,
+  COUNT(*) AS total
+FROM public.ong_projetos
+UNION ALL SELECT 'ong_rubricas', COUNT(*) FILTER (WHERE user_id IS NULL), COUNT(*) FROM public.ong_rubricas
+UNION ALL SELECT 'ong_despesas', COUNT(*) FILTER (WHERE user_id IS NULL), COUNT(*) FROM public.ong_despesas
+UNION ALL SELECT 'ong_metas',    COUNT(*) FILTER (WHERE user_id IS NULL), COUNT(*) FROM public.ong_metas;
+-- sem_uid deve ser 0 em todas as linhas</pre>
+          <button class="btn-copy" onclick="copyCode('sql-verify')"><i class="fas fa-copy"></i> Copiar</button>
+        </div>
+      </div>
+
+      <div class="card" style="background:rgba(16,185,129,.08);border-color:var(--success);">
+        <div class="card-title" style="color:var(--success);"><i class="fas fa-flag-checkered"></i> Configuração concluída!</div>
+        <p style="font-size:.88rem;">Se chegou até aqui e todos os testes passaram, o sistema está pronto para uso.</p>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="index.html" class="btn btn-success" style="text-decoration:none;">
+            <i class="fas fa-rocket"></i> Abrir ONG Gestor
+          </a>
+          <button class="btn btn-outline" onclick="showSection(6)">
+            <i class="fas fa-stethoscope"></i> Rodar Diagnóstico Final
+          </button>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="showSection(6)"><i class="fas fa-arrow-left"></i> Anterior</button>
+        <a href="index.html" class="btn btn-success" style="text-decoration:none;">
+          <i class="fas fa-rocket"></i> Ir para o Sistema
+        </a>
+      </div>
+    </section>
+
+  </main>
+</div><!-- /layout -->
+
+<script>
+// ══════════════════════════════════════════════════════
+// Configurações — lidas do api.js dinamicamente se possível
+// ══════════════════════════════════════════════════════
+let SUPABASE_URL = '';
+let SUPABASE_KEY = '';
+
+// Tenta carregar do api.js via fetch
+async function loadConfig() {
+  try {
+    const res = await fetch('js/api.js');
+    const txt = await res.text();
+    const urlMatch = txt.match(/SUPABASE_URL\s*=\s*['"`]([^'"`]+)['"`]/);
+    const keyMatch = txt.match(/SUPABASE_KEY\s*=\s*['"`]([^'"`]+)['"`]/);
+    if (urlMatch) {
+      // Remove sufixos /rest/v1, /auth/v1 etc para obter a URL base
+      SUPABASE_URL = urlMatch[1].trim().replace(/\/(rest|auth|storage)(\/v1)?.*$/, '');
+    }
+    if (keyMatch) SUPABASE_KEY = keyMatch[1].trim();
+    return !!(SUPABASE_URL && SUPABASE_KEY);
+  } catch (e) {
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// Navegação
+// ══════════════════════════════════════════════════════
+let currentSection = 0;
+const totalSections = 8;
+const sectionDone = new Array(totalSections).fill(false);
+
+function showSection(idx) {
+  document.querySelectorAll('.section').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.nav-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+  currentSection = idx;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Ações ao abrir seção
+  if (idx === 4) {
+    carregarConvites();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// Copy to clipboard
+// ══════════════════════════════════════════════════════
+function copyCode(idOrEl) {
+  const el = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl.previousElementSibling;
+  const text = el ? el.textContent : '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = typeof idOrEl === 'string'
+      ? document.querySelector(`#${idOrEl} + .btn-copy, [onclick*="${idOrEl}"]`)
+      : idOrEl;
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+      btn.style.background = 'var(--success)';
+      btn.style.color = '#fff';
+      setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+    }
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// Teste de conexão (Seção 0)
+// ══════════════════════════════════════════════════════
+async function testarConexao() {
+  const dot    = document.getElementById('conn-dot-0');
+  const text   = document.getElementById('conn-text-0');
+  const detail = document.getElementById('conn-detail-0');
+  const logWrap = document.getElementById('conn-log');
+  const logEl  = document.getElementById('diag-log');
+
+  dot.className = 'conn-dot wait';
+  text.textContent = 'Testando conexão...';
+  detail.textContent = '';
+  logWrap.style.display = 'block';
+  logEl.innerHTML = '';
+
+  const ok = await loadConfig();
+  const addLog = (msg, cls) => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.innerHTML = `${new Date().toLocaleTimeString('pt-BR')} — ${msg}`;
+    logEl.appendChild(d);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  if (!ok || !SUPABASE_URL || SUPABASE_URL.includes('SEU_PROJETO')) {
+    dot.className = 'conn-dot err';
+    text.textContent = 'Configuração incompleta';
+    detail.textContent = 'SUPABASE_URL ou SUPABASE_KEY não configurados em js/api.js';
+    addLog('❌ SUPABASE_URL não configurado — edite js/api.js', 'log-err');
+    return;
+  }
+
+  addLog(`🔍 URL: ${SUPABASE_URL}`, 'log-info');
+  addLog(`🔑 Key: ${SUPABASE_KEY.substring(0,30)}...`, 'log-info');
+
+  // Teste 1: Auth API — endpoint público que responde 200 para qualquer anon key válida
+  try {
+    addLog('📡 Testando validade da Anon Key via Auth API...', 'log-info');
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+      headers: { 'apikey': SUPABASE_KEY }
+    });
+    if (r.ok) {
+      addLog(`✅ Anon Key válida — Auth API OK (HTTP ${r.status})`, 'log-ok');
+    } else if (r.status === 401 || r.status === 403) {
+      addLog(`❌ HTTP ${r.status} — Anon Key inválida ou expirada`, 'log-err');
+      dot.className = 'conn-dot err';
+      text.textContent = `Anon Key inválida: HTTP ${r.status}`;
+      detail.textContent = 'Vá em Project Settings → API → Legacy anon, service_role API keys → copie a "anon public" key';
+      return;
+    } else {
+      // 4xx/5xx inesperado — tenta continuar mesmo assim
+      addLog(`⚠️ Auth API: HTTP ${r.status} — continuando testes...`, 'log-warn');
+    }
+  } catch (e) {
+    addLog(`❌ Erro de rede: ${e.message}`, 'log-err');
+    dot.className = 'conn-dot err';
+    text.textContent = 'Erro de rede / CORS';
+    detail.textContent = e.message;
+    return;
+  }
+
+  // Teste 2: tabela ong_projetos (RLS: só authenticated — 401 é normal sem login)
+  try {
+    addLog('📋 Verificando tabela ong_projetos...', 'log-info');
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ong_projetos?limit=1`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Accept': 'application/json' }
+    });
+    if (r.ok) {
+      const data = await r.json();
+      addLog(`✅ ong_projetos existe (${data.length} registros visíveis sem login)`, 'log-ok');
+    } else if (r.status === 401 || r.status === 403) {
+      addLog(`✅ ong_projetos existe — RLS ativo (normal: requer login)`, 'log-ok');
+    } else if (r.status === 404) {
+      addLog(`❌ ong_projetos NÃO EXISTE — execute o SQL (Etapa 2)`, 'log-err');
+    } else {
+      addLog(`⚠️ ong_projetos: HTTP ${r.status}`, 'log-warn');
+    }
+  } catch (e) {
+    addLog(`❌ Erro ao verificar tabelas: ${e.message}`, 'log-err');
+  }
+
+  // Teste 3: tabela ong_convites (anon tem SELECT — deve retornar 200)
+  try {
+    addLog('🎟️ Verificando tabela ong_convites...', 'log-info');
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ong_convites?limit=3&select=codigo,ativo`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Accept': 'application/json' }
+    });
+    if (r.ok) {
+      const data = await r.json();
+      addLog(`✅ ong_convites existe — ${data.length} convite(s) visíveis`, 'log-ok');
+    } else if (r.status === 404) {
+      addLog(`❌ ong_convites NÃO EXISTE — execute o SQL (Etapa 2)`, 'log-err');
+    } else if (r.status === 401 || r.status === 403) {
+      addLog(`⚠️ ong_convites: HTTP ${r.status} — tabela existe mas policy anon pode estar faltando`, 'log-warn');
+    } else {
+      addLog(`⚠️ ong_convites: HTTP ${r.status}`, 'log-warn');
+    }
+  } catch (e) {
+    addLog(`❌ ${e.message}`, 'log-err');
+  }
+
+  // Teste 4: Auth
+  try {
+    addLog('🔐 Verificando Supabase Auth...', 'log-info');
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+      headers: { 'apikey': SUPABASE_KEY }
+    });
+    if (r.ok) {
+      addLog(`✅ Auth API funcionando`, 'log-ok');
+    } else {
+      addLog(`⚠️ Auth API: HTTP ${r.status}`, 'log-warn');
+    }
+  } catch (e) {
+    addLog(`❌ Auth API erro: ${e.message}`, 'log-err');
+  }
+
+  addLog('✅ Diagnóstico concluído!', 'log-ok');
+  dot.className = 'conn-dot ok';
+  text.textContent = 'Conexão estabelecida com sucesso';
+  detail.textContent = `${SUPABASE_URL}`;
+}
+
+// ══════════════════════════════════════════════════════
+// Diagnóstico completo (Seção 6)
+// ══════════════════════════════════════════════════════
+async function runDiagnostico() {
+  const btn = document.getElementById('btn-diag');
+  const results = document.getElementById('diag-results');
+  const log = document.getElementById('diag-log-full');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Executando...';
+  results.style.display = 'block';
+  log.innerHTML = '';
+
+  const addLog = (msg, cls) => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.innerHTML = `${new Date().toLocaleTimeString('pt-BR')} — ${msg}`;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  };
+
+  log.style.cssText = 'background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:monospace;font-size:.78rem;line-height:1.8;max-height:500px;overflow-y:auto;';
+
+  const ok = await loadConfig();
+  addLog(`🔧 ONG Gestor — Diagnóstico completo v7`, 'log-info');
+  addLog(`📅 ${new Date().toLocaleString('pt-BR')}`, 'log-info');
+  addLog('─────────────────────────────────', 'log-info');
+
+  if (!ok || !SUPABASE_URL || SUPABASE_URL.includes('SEU_PROJETO')) {
+    addLog('❌ SUPABASE_URL/KEY não configurados — edite js/api.js', 'log-err');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-play"></i> Executar Diagnóstico';
+    return;
+  }
+
+  addLog(`🌐 URL: ${SUPABASE_URL}`, 'log-info');
+
+  const tables = ['ong_projetos','ong_rubricas','ong_despesas','ong_metas',
+    'ong_cronograma','ong_documentos','ong_auditoria','ong_convites'];
+
+  addLog('─── Tabelas ─────────────────────', 'log-info');
+  for (const t of tables) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${t}?limit=0`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Accept': 'application/json', 'Prefer': 'count=exact' }
+      });
+      const count = r.headers.get('content-range');
+      if (r.ok) {
+        addLog(`✅ ${t} — OK (${count || '?'} registros)`, 'log-ok');
+      } else if (r.status === 404) {
+        addLog(`❌ ${t} — NÃO EXISTE (execute SQL)`, 'log-err');
+      } else {
+        addLog(`⚠️ ${t} — HTTP ${r.status}`, 'log-warn');
+      }
+    } catch (e) {
+      addLog(`❌ ${t} — ERRO: ${e.message}`, 'log-err');
+    }
+  }
+
+  addLog('─── Auth ────────────────────────', 'log-info');
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+      headers: { 'apikey': SUPABASE_KEY }
+    });
+    addLog(r.ok ? `✅ Auth funcionando` : `⚠️ Auth HTTP ${r.status}`, r.ok ? 'log-ok' : 'log-warn');
+  } catch (e) {
+    addLog(`❌ Auth ERRO: ${e.message}`, 'log-err');
+  }
+
+  addLog('─── Storage ─────────────────────', 'log-info');
+  try {
+    // Tenta usar o JWT do usuário logado (sessão do sistema principal)
+    const _sessRaw = localStorage.getItem('ong_session');
+    const _sessObj = _sessRaw ? JSON.parse(_sessRaw) : null;
+    const _userJwt = _sessObj?.access_token || null;
+
+    // URL base do Supabase (já normalizada pelo loadConfig, sem /rest/v1)
+    const _baseUrl = SUPABASE_URL;
+
+    if (_userJwt) {
+      // ✅ Método 1: GET /storage/v1/bucket/ong-arquivos com JWT do usuário logado
+      addLog('🔑 JWT detectado — testando bucket diretamente...', 'log-info');
+      const r = await fetch(`${_baseUrl}/storage/v1/bucket/ong-arquivos`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${_userJwt}` }
+      });
+      if (r.ok) {
+        const bucket = await r.json();
+        addLog(`✅ Bucket 'ong-arquivos' encontrado (${bucket.public ? 'público' : 'privado'}, limite: ${bucket.file_size_limit ? Math.round(bucket.file_size_limit/1024/1024)+'MB' : 'sem limite'}, policies: ${bucket.allowed_mime_types?.length || 0} MIME types)`, 'log-ok');
+      } else if (r.status === 404) {
+        addLog(`⚠️ Bucket 'ong-arquivos' NÃO encontrado — crie manualmente (Etapa 4)`, 'log-warn');
+        addLog('   → Supabase Dashboard → Storage → "+ New bucket" → Nome: ong-arquivos → Public: ON → Save', 'log-warn');
+      } else if (r.status === 401 || r.status === 403) {
+        addLog(`⚠️ Storage: JWT sem permissão (HTTP ${r.status}) — verifique as policies do bucket`, 'log-warn');
+      } else {
+        addLog(`⚠️ Storage: HTTP ${r.status} — bucket pode existir mas há restrições`, 'log-warn');
+      }
+    } else {
+      // Sem JWT: testa via HEAD no URL público do bucket
+      addLog('ℹ️ Sem sessão ativa — testando bucket via HEAD no URL público...', 'log-info');
+      const r = await fetch(`${_baseUrl}/storage/v1/object/public/ong-arquivos/`, {
+        method: 'HEAD'
+      });
+      if (r.ok || r.status === 200 || r.status === 400) {
+        // 400 em HEAD do root é normal para bucket público sem arquivo raiz
+        addLog(`✅ Bucket 'ong-arquivos' existe e responde (HTTP ${r.status})`, 'log-ok');
+      } else if (r.status === 404) {
+        addLog(`⚠️ Bucket 'ong-arquivos' NÃO encontrado (HTTP 404) — crie manualmente (Etapa 4)`, 'log-warn');
+      } else {
+        addLog(`ℹ️ Bucket: HTTP ${r.status} — faça login no sistema para verificação completa`, 'log-info');
+        addLog('   → Acesse index.html, faça login e execute este diagnóstico novamente', 'log-info');
+      }
+    }
+  } catch (e) {
+    addLog(`❌ Storage ERRO: ${e.message}`, 'log-err');
+  }
+
+  addLog('─────────────────────────────────', 'log-info');
+  addLog('✅ Diagnóstico finalizado', 'log-ok');
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-play"></i> Executar Diagnóstico';
+}
+
+// ══════════════════════════════════════════════════════
+// Gerenciar Convites (Seção 4)
+// ══════════════════════════════════════════════════════
+function switchTab(tab) {
+  ['listar','criar','sql'].forEach(t => {
+    document.getElementById(`tab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById(`tab-${t}`);
+    btn.style.borderBottomColor = t === tab ? 'var(--primary)' : 'transparent';
+    btn.style.color = t === tab ? 'var(--primary)' : 'var(--text-muted)';
+    btn.style.fontWeight = t === tab ? '600' : '400';
+  });
+  if (tab === 'listar') carregarConvites();
+}
+
+async function carregarConvites() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    await loadConfig();
+  }
+
+  const loading = document.getElementById('conv-loading');
+  const tableWrap = document.getElementById('conv-table-wrap');
+  const empty = document.getElementById('conv-empty');
+  const errDiv = document.getElementById('conv-error');
+  const errMsg = document.getElementById('conv-error-msg');
+  const tbody = document.getElementById('conv-tbody');
+  const count = document.getElementById('convites-count');
+
+  loading.style.display = 'block';
+  tableWrap.style.display = 'none';
+  empty.style.display = 'none';
+  errDiv.style.display = 'none';
+
+  if (!SUPABASE_URL || SUPABASE_URL.includes('SEU_PROJETO')) {
+    loading.style.display = 'none';
+    errDiv.style.display = 'flex';
+    errMsg.textContent = 'Configure SUPABASE_URL e SUPABASE_KEY em js/api.js primeiro (Etapa 1).';
+    return;
+  }
+
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/ong_convites?select=*&order=criado_em.desc`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Accept': 'application/json' } }
+    );
+
+    loading.style.display = 'none';
+
+    if (r.status === 404) {
+      errDiv.style.display = 'flex';
+      errMsg.textContent = 'Tabela ong_convites não existe. Execute o SQL completo (Etapa 2).';
+      return;
+    }
+    if (!r.ok) {
+      errDiv.style.display = 'flex';
+      errMsg.textContent = `Erro HTTP ${r.status}: ${r.statusText}. ${r.status === 401 ? 'Anon key inválida — atualize em js/api.js.' : ''}`;
+      return;
+    }
+
+    const data = await r.json();
+    count.textContent = `${data.length} convite(s) encontrado(s)`;
+
+    if (!data.length) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    data.forEach(conv => {
+      const isExpired = conv.expira_em && new Date(conv.expira_em) < new Date();
+      const isUsed    = !!conv.usado_por;
+      let statusBadge = '';
+      if (isUsed)         statusBadge = '<span class="badge badge-yellow">Usado</span>';
+      else if (!conv.ativo || isExpired) statusBadge = '<span class="badge badge-red">Inativo</span>';
+      else                statusBadge = '<span class="badge badge-green">Ativo</span>';
+
+      const roleBadges = {
+        'ADMIN':        '<span class="badge badge-blue"><i class="fas fa-user-shield"></i> Admin</span>',
+        'PARCEIRO':     '<span class="badge badge-green"><i class="fas fa-user-tie"></i> Parceiro</span>',
+        'VISUALIZADOR': '<span class="badge badge-yellow"><i class="fas fa-eye"></i> Visualizador</span>'
+      };
+      const roleBadge = roleBadges[(conv.role||'VISUALIZADOR').toUpperCase()] || roleBadges['VISUALIZADOR'];
+
+      const expira = conv.expira_em
+        ? new Date(conv.expira_em).toLocaleDateString('pt-BR')
+        : '<span style="color:var(--text-muted)">Sem expiração</span>';
+
+      const email = conv.email_destino
+        ? `<span style="font-size:.8rem;">${conv.email_destino}</span>`
+        : '<span style="color:var(--text-muted);font-size:.8rem;">Qualquer e-mail</span>';
+
+      const ongIdDisplay = conv.ong_id
+        ? `<span style="font-family:monospace;font-size:.72rem;color:var(--info);" title="ONG_ID: ${conv.ong_id}">${conv.ong_id.substring(0,8)}…</span>`
+        : '<span style="color:var(--danger);font-size:.75rem;" title="Sem ONG_ID — isolamento não ativo!">⚠ sem ong_id</span>';
+
+      tbody.innerHTML += `
+        <tr data-id="${conv.id}">
+          <td class="codigo-cell">${conv.codigo}</td>
+          <td>${roleBadge}</td>
+          <td>${statusBadge}</td>
+          <td>${ongIdDisplay}</td>
+          <td>${email}</td>
+          <td style="font-size:.8rem;">${expira}</td>
+          <td style="font-size:.8rem;color:var(--text-muted);">${conv.descricao || '—'}</td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              ${conv.ativo && !isUsed ? `<button class="btn btn-outline" onclick="copiarCodigo('${conv.codigo}')" style="padding:4px 10px;font-size:.75rem;" title="Copiar código"><i class="fas fa-copy"></i></button>` : ''}
+              ${conv.ativo && !isUsed ? `<button class="btn btn-danger" onclick="revogarConvite('${conv.id}','${conv.codigo}')" style="padding:4px 10px;font-size:.75rem;" title="Revogar"><i class="fas fa-ban"></i></button>` : ''}
+              <button class="btn btn-outline" onclick="deletarConvite('${conv.id}','${conv.codigo}')" style="padding:4px 10px;font-size:.75rem;color:var(--danger);" title="Deletar"><i class="fas fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>`;
+    });
+
+    tableWrap.style.display = 'block';
+  } catch (e) {
+    loading.style.display = 'none';
+    errDiv.style.display = 'flex';
+    errMsg.textContent = `Erro de conexão: ${e.message}`;
+  }
+}
+
+function gerarCodigoAleatorio() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'ONG';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  document.getElementById('new-codigo').value = code;
+}
+
+async function criarConvite() {
+  const codigo   = document.getElementById('new-codigo').value.trim().toUpperCase();
+  const role     = document.getElementById('new-role')?.value || 'VISUALIZADOR';
+  const ongId    = document.getElementById('new-ong-id')?.value.trim() || null;
+  const email    = document.getElementById('new-email').value.trim();
+  const expira   = document.getElementById('new-expira').value;
+  const descricao= document.getElementById('new-descricao').value.trim();
+  const msg      = document.getElementById('criar-msg');
+  const btn      = document.getElementById('btn-criar-convite');
+
+  if (!codigo) {
+    msg.innerHTML = '<span style="color:var(--danger)">⚠ Informe o código do convite.</span>';
+    return;
+  }
+  // ong_id é obrigatório para multi-tenancy correto
+  if (!ongId) {
+    msg.innerHTML = '<span style="color:var(--danger)">⚠ Informe o ONG_ID (UUID da ONG). Clique em "Meu ID" para usar seu user_id.</span>';
+    return;
+  }
+  // Validação básica de UUID
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidPattern.test(ongId)) {
+    msg.innerHTML = '<span style="color:var(--danger)">⚠ ONG_ID inválido. Deve ser um UUID no formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...';
+  msg.textContent = '';
+
+  const payload = {
+    codigo,
+    role,
+    ong_id: ongId,
+    ativo: true,
+    descricao: descricao || null,
+    email_destino: email || null,
+    expira_em: expira ? new Date(expira + 'T23:59:59').toISOString() : null
+  };
+
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ong_convites`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (r.ok || r.status === 201) {
+      msg.innerHTML = `<span style="color:var(--success)">✅ Convite <strong>${codigo}</strong> (${role}) criado! ONG_ID: ${ongId.substring(0,8)}...</span>`;
+      document.getElementById('new-codigo').value = '';
+      document.getElementById('new-email').value = '';
+      document.getElementById('new-expira').value = '';
+      document.getElementById('new-descricao').value = '';
+      // Não limpa o ong_id pois provavelmente será reutilizado para próximo convite
+    } else {
+      const err = await r.json().catch(() => ({}));
+      msg.innerHTML = `<span style="color:var(--danger)">❌ Erro ${r.status}: ${err.message || err.details || r.statusText}</span>`;
+    }
+  } catch (e) {
+    msg.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-save"></i> Criar Convite';
+}
+
+/* Preenche o campo ong_id com o user_id da sessão atual (se logado) */
+function preencherOngIdAtual() {
+  // Tenta ler do localStorage
+  const sess = (() => {
+    try { return JSON.parse(localStorage.getItem('ong_session')); } catch(e) { return null; }
+  })();
+  const uid = sess?.user?.id || sess?.user?.user_metadata?.ong_id || null;
+  const field = document.getElementById('new-ong-id');
+  if (uid && field) {
+    field.value = uid;
+    field.style.borderColor = 'var(--success)';
+    setTimeout(() => field.style.borderColor = '', 2000);
+    // Feedback visual
+    const msg = document.getElementById('criar-msg');
+    if (msg) msg.innerHTML = `<span style="color:var(--success)">✅ ONG_ID preenchido com seu user_id: ${uid}</span>`;
+  } else {
+    alert('Você precisa estar logado no sistema principal (index.html) para usar esta função.\n\nAlternativamente, cole manualmente o UUID do usuário ADMIN da ONG no campo ONG_ID.');
+  }
+}
+
+async function revogarConvite(id, codigo) {
+  if (!confirm(`Revogar o convite "${codigo}"? O código não poderá mais ser usado.`)) return;
+
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ong_convites?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ativo: false })
+    });
+    if (r.ok || r.status === 204) {
+      carregarConvites();
+    } else {
+      alert(`Erro ao revogar: HTTP ${r.status}`);
+    }
+  } catch (e) {
+    alert(`Erro: ${e.message}`);
+  }
+}
+
+async function deletarConvite(id, codigo) {
+  if (!confirm(`Deletar permanentemente o convite "${codigo}"?`)) return;
+
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/ong_convites?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (r.ok || r.status === 204) {
+      carregarConvites();
+    } else {
+      alert(`Erro ao deletar: HTTP ${r.status}`);
+    }
+  } catch (e) {
+    alert(`Erro: ${e.message}`);
+  }
+}
+
+function copiarCodigo(codigo) {
+  navigator.clipboard.writeText(codigo).then(() => {
+    // Toast simples
+    const toast = document.createElement('div');
+    toast.textContent = `Código "${codigo}" copiado!`;
+    toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--success);color:#fff;padding:12px 20px;border-radius:8px;font-size:.85rem;font-weight:600;z-index:9999;animation:fadeIn .2s ease;`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════
+loadConfig();
+</script>
+</body>
+</html>

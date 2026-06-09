@@ -84,7 +84,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">API Key</label>
-          <input type="text" class="form-control" id="diag-key" value="sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B">
+          <input type="text" class="form-control" id="diag-key" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3enpjaHN4dWFpYXNobXdvemR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODkxMzgsImV4cCI6MjA5NTQ2NTEzOH0.0LclUOMKXYcRB787gPq6K_MavBxIsGAIkdNyK568eOc">
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -310,7 +310,7 @@
    CONFIGURAÇÃO
 ═══════════════════════════════════════════ */
 const SB_URL = () => document.getElementById('diag-url')?.value || 'https://twzzchsxuaiashmwozdz.supabase.co/rest/v1';
-const SB_KEY = () => document.getElementById('diag-key')?.value || 'sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B';
+const SB_KEY = () => document.getElementById('diag-key')?.value || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3enpjaHN4dWFpYXNobXdvemR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODkxMzgsImV4cCI6MjA5NTQ2NTEzOH0.0LclUOMKXYcRB787gPq6K_MavBxIsGAIkdNyK568eOc';
 
 function headers(extra={}) {
   return {

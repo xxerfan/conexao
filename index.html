@@ -14,8 +14,169 @@
   <link rel="stylesheet" href="css/style.css">
   <!-- SheetJS para exportação Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF + AutoTable para geração de PDF nativo -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- Cache buster: força limpeza do SW ao atualizar versão -->
+  <script>
+    const _APP_VERSION = '7';
+    if ('serviceWorker' in navigator) {
+      // Verifica se a versão mudou e limpa cache antigo
+      const _storedVer = localStorage.getItem('ong_sw_version');
+      if (_storedVer !== _APP_VERSION) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => r.unregister());
+        });
+        if ('caches' in window) {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+        localStorage.setItem('ong_sw_version', _APP_VERSION);
+        // Recarrega apenas se havia versão antiga (não na primeira visita)
+        if (_storedVer) location.reload();
+      }
+    }
+  </script>
+  <script src="js/roles.js"></script>
 </head>
 <body>
+
+<!-- ═══════════ LOGIN OVERLAY ═══════════ -->
+<div class="modal-overlay" id="modal-login-overlay" style="z-index:9999;background:rgba(12,20,38,.97);overflow-y:auto;align-items:flex-start;padding:20px 0;">
+  <div class="modal" style="max-width:440px;width:94%;border-radius:16px;overflow:hidden;margin:auto;">
+
+    <!-- Logo / Cabeçalho -->
+    <div style="background:linear-gradient(135deg,#1a3a6b 0%,#0c7c59 100%);padding:28px 32px 20px;text-align:center;">
+      <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+        <i class="fas fa-seedling" style="font-size:1.6rem;color:#fff;"></i>
+      </div>
+      <h2 style="color:#fff;font-size:1.3rem;font-weight:700;margin:0;">ONG Gestor</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:.8rem;margin:4px 0 0;">MROSC / TransfereGov</p>
+    </div>
+
+    <!-- PAINEL LOGIN -->
+    <div id="login-panel" style="padding:28px 32px;">
+      <h3 style="font-size:1rem;font-weight:600;margin:0 0 20px;">Entrar na sua conta</h3>
+      <form autocomplete="on" onsubmit="event.preventDefault();doLogin()">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="form-control" id="login-email" name="email"
+               placeholder="seu@email.com" autocomplete="email"
+               onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+      <div class="form-group" style="margin-bottom:6px;">
+        <label class="form-label">Senha</label>
+        <div style="position:relative;">
+          <input type="password" class="form-control" id="login-password" name="password"
+                 placeholder="••••••••" autocomplete="current-password"
+                 onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:40px;">
+          <button type="button" onclick="togglePasswordVis('login-password',this)"
+                  style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div style="text-align:right;margin-bottom:18px;">
+        <button type="button" class="btn-link-inline" onclick="setLoginPanel('reset')" style="font-size:.8rem;">Esqueci minha senha</button>
+      </div>
+      <p id="login-error" style="color:var(--danger);font-size:.82rem;min-height:18px;margin:0 0 12px;"></p>
+      <button type="submit" class="btn btn-primary" id="btn-login" style="width:100%;">
+        <i class="fas fa-sign-in-alt"></i> Entrar
+      </button>
+      </form>
+      <div style="text-align:center;margin-top:18px;font-size:.85rem;">
+        Não tem conta?
+        <button class="btn-link-inline" onclick="setLoginPanel('signup')">Criar conta gratuita</button>
+      </div>
+    </div>
+
+    <!-- PAINEL CADASTRO -->
+    <div id="signup-panel" class="hidden" style="padding:20px 32px 24px;">
+      <h3 style="font-size:1rem;font-weight:600;margin:0 0 14px;">Criar nova conta</h3>
+      <form autocomplete="on" onsubmit="event.preventDefault();doSignUp()">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Nome da ONG / Organização</label>
+        <input type="text" class="form-control" id="signup-nome" name="org_name"
+               placeholder="Ex: Instituto Cidadania" autocomplete="organization">
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="form-control" id="signup-email" name="email"
+               placeholder="contato@ong.org.br" autocomplete="email">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="form-group">
+          <label class="form-label">Senha</label>
+          <div style="position:relative;">
+            <input type="password" class="form-control" id="signup-password" name="password"
+                   placeholder="Mín. 6 car." autocomplete="new-password" style="padding-right:36px;">
+            <button type="button" onclick="togglePasswordVis('signup-password',this)"
+                    style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;font-size:.85rem;">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar</label>
+          <input type="password" class="form-control" id="signup-password2" name="password2"
+                 placeholder="Repita" autocomplete="new-password">
+        </div>
+      </div>
+      <!-- CÓDIGO DE CONVITE -->
+      <div class="form-group" style="margin-bottom:4px;">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-key" style="color:var(--primary);"></i>
+          Código de Convite <span style="color:var(--danger)">*</span>
+          <span style="font-size:.68rem;color:var(--text-muted);font-weight:400;">(define seu acesso)</span>
+        </label>
+        <input type="text" class="form-control" id="signup-codigo"
+               placeholder="Ex: ONG2024 · ADMIN001 · PARCEIRO01"
+               maxlength="30" autocomplete="off"
+               style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:.9rem;"
+               oninput="this.value=this.value.toUpperCase()"
+               onkeydown="if(event.key==='Enter')doSignUp()">
+        <small style="display:block;margin-top:3px;color:var(--text-muted);font-size:.7rem;">
+          <i class="fas fa-shield-alt"></i> O código determina seu perfil: Admin / Parceiro / Visualizador
+        </small>
+      </div>
+      <p id="signup-error" style="font-size:.82rem;min-height:16px;margin:6px 0 10px;"></p>
+      <button type="submit" class="btn btn-primary" id="btn-signup" style="width:100%;">
+        <i class="fas fa-user-plus"></i> Criar Conta
+      </button>
+      </form>
+      <div style="text-align:center;margin-top:12px;font-size:.85rem;">
+        Já tem conta?
+        <button class="btn-link-inline" onclick="setLoginPanel('login')">Fazer login</button>
+      </div>
+    </div>
+
+    <!-- PAINEL RECUPERAR SENHA -->
+    <div id="reset-panel" class="hidden" style="padding:28px 32px;">
+      <h3 style="font-size:1rem;font-weight:600;margin:0 0 8px;">Recuperar senha</h3>
+      <p style="font-size:.85rem;color:var(--text-muted);margin:0 0 20px;">Enviaremos um link de redefinição para o seu e-mail.</p>
+      <form autocomplete="on" onsubmit="event.preventDefault();doReset()">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">E-mail cadastrado</label>
+        <input type="email" class="form-control" id="reset-email" name="email"
+               placeholder="seu@email.com" autocomplete="email"
+               onkeydown="if(event.key==='Enter')doReset()">
+      </div>
+      <p id="reset-msg" style="font-size:.82rem;min-height:18px;margin:0 0 12px;"></p>
+      <button type="submit" class="btn btn-primary" id="btn-reset" style="width:100%;">
+        <i class="fas fa-envelope"></i> Enviar link
+      </button>
+      </form>
+      <div style="text-align:center;margin-top:16px;font-size:.85rem;">
+        <button class="btn-link-inline" onclick="setLoginPanel('login')"><i class="fas fa-arrow-left"></i> Voltar ao login</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL — oculto até autenticação -->
+<div id="app-shell">
 
 <!-- Sidebar overlay -->
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -27,38 +188,45 @@
       <div class="brand-icon"><i class="fas fa-seedling"></i></div>
       <div class="brand-text"><h1>ONG Gestor</h1><span>MROSC / TransfereGov</span></div>
     </a>
+    <!-- Botão colapsar sidebar (desktop) -->
+    <button class="sidebar-collapse-btn" id="btn-collapse-sidebar" onclick="toggleSidebarCollapse()" title="Recolher menu">
+      <i class="fas fa-chevron-left" id="collapse-icon"></i>
+    </button>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section-title">Principal</div>
-    <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+    <button class="nav-item active" data-page="dashboard" data-tooltip="Dashboard" onclick="navigateTo('dashboard')">
       <i class="fas fa-chart-line"></i><span>Dashboard Geral</span>
     </button>
-    <button class="nav-item" data-page="projetos" onclick="navigateTo('projetos')">
+    <button class="nav-item" data-page="projetos" data-tooltip="Projetos" onclick="navigateTo('projetos')">
       <i class="fas fa-folder-open"></i><span>Projetos</span>
     </button>
 
     <div class="nav-section-title">Execução do Projeto</div>
-    <button class="nav-item" data-page="plano" onclick="navigateTo('plano')">
+    <button class="nav-item" data-page="plano" data-tooltip="Plano de Trabalho" onclick="navigateTo('plano')">
       <i class="fas fa-sitemap"></i><span>Plano de Trabalho</span>
     </button>
-    <button class="nav-item" data-page="financeiro" onclick="navigateTo('financeiro')">
+    <button class="nav-item" data-page="financeiro" data-tooltip="Gestão Financeira" onclick="navigateTo('financeiro')">
       <i class="fas fa-coins"></i><span>Gestão Financeira</span>
     </button>
 
     <div class="nav-section-title">Documentação</div>
-    <button class="nav-item" data-page="documentos" onclick="navigateTo('documentos')">
+    <button class="nav-item" data-page="documentos" data-tooltip="Documentos" onclick="navigateTo('documentos')">
       <i class="fas fa-paperclip"></i><span>Documentos / Anexos</span>
     </button>
-    <button class="nav-item" data-page="prestacao" onclick="navigateTo('prestacao')">
+    <button class="nav-item" data-page="prestacao" data-tooltip="Prestação de Contas" onclick="navigateTo('prestacao')">
       <i class="fas fa-file-invoice"></i><span>Prestação de Contas</span>
     </button>
 
     <div class="nav-section-title">Sistema</div>
-    <button class="nav-item" data-page="setup" onclick="window.open('setup.html','_blank')">
+    <button class="nav-item" data-page="setup" data-tooltip="Setup DB" onclick="guardAction('canSetup', ()=>window.open('setup.html','_blank'))">
       <i class="fas fa-database"></i><span>Setup Banco de Dados</span>
     </button>
-    <button class="nav-item" data-page="diag" onclick="window.open('diagnostico.html','_blank')">
+    <button class="nav-item" data-page="diag" data-tooltip="Diagnóstico" onclick="guardAction('canSetup', ()=>window.open('diagnostico.html','_blank'))">
       <i class="fas fa-stethoscope"></i><span>Diagnóstico / Importar</span>
+    </button>
+    <button class="nav-item" data-page="guide" data-tooltip="Guia de Config." onclick="guardAction('canSetup', ()=>window.open('setup-guide.html','_blank'))">
+      <i class="fas fa-book-open"></i><span>Guia de Configuração</span>
     </button>
   </nav>
   <div class="sidebar-footer"><strong>ONG Gestor</strong> v4.0 &nbsp;·&nbsp; MROSC</div>
@@ -77,10 +245,34 @@
            placeholder="Buscar... (Ctrl+K)" onkeydown="handleGlobalSearch(event)">
   </div>
   <div class="header-actions">
-    <button class="btn-header-action" id="btn-dark-mode" onclick="toggleDarkMode()" title="Alternar modo escuro (D)" style="font-size:.9rem;">
+    <!-- Dark mode -->
+    <button class="btn-header-action" id="btn-dark-mode" onclick="toggleDarkMode()" title="Alternar modo escuro (D)">
       <i class="fas fa-moon" id="dark-mode-icon"></i>
     </button>
-    <button class="btn-header-action" id="btn-action-header" onclick="headerActionClick()">
+    <!-- Override de perfil (emergência) -->
+    <button class="btn-header-action" id="btn-role-override" onclick="showRoleOverridePanel()" title="Ajustar perfil de acesso">
+      <i class="fas fa-user-cog"></i>
+    </button>
+    <!-- User Info + Logout -->
+    <div class="user-menu-wrap" id="user-menu-wrap">
+      <button class="btn-header-action user-menu-toggle" onclick="toggleUserMenu()" title="Minha conta">
+        <i class="fas fa-user-circle" style="font-size:1.1rem;"></i>
+      </button>
+      <div class="user-dropdown" id="user-dropdown">
+        <div class="user-dropdown-info">
+          <i class="fas fa-user-circle user-dropdown-avatar"></i>
+          <div>
+            <div class="user-dropdown-name" id="user-display-name">Usuário</div>
+            <div class="user-dropdown-email" id="user-display-email"></div>
+          </div>
+        </div>
+        <div class="user-dropdown-divider"></div>
+        <button class="user-dropdown-item" onclick="doLogout()">
+          <i class="fas fa-sign-out-alt"></i> Sair da conta
+        </button>
+      </div>
+    </div>
+    <button class="btn-header-action btn-cta" id="btn-action-header" onclick="headerActionClick()">
       <i class="fas fa-plus" id="btn-action-icon"></i>
       <span id="btn-action-text">Novo Projeto</span>
     </button>
@@ -91,10 +283,12 @@
 <main class="main-content">
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     DASHBOARD GERAL
+     DASHBOARD GERAL SUPREMO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <section class="page active" id="page-dashboard">
-  <div class="kpi-grid">
+
+  <!-- KPIs principais -->
+  <div class="kpi-grid mb-3">
     <div class="kpi-card blue">
       <div class="kpi-icon blue"><i class="fas fa-folder"></i></div>
       <div class="kpi-info"><div class="kpi-value" id="kpi-projetos">—</div><div class="kpi-label">Total de Projetos</div></div>
@@ -105,35 +299,41 @@
     </div>
     <div class="kpi-card teal">
       <div class="kpi-icon teal"><i class="fas fa-hand-holding-usd"></i></div>
-      <div class="kpi-info"><div class="kpi-value" id="kpi-repasse" style="font-size:.95rem">—</div><div class="kpi-label">Repasse Federal</div></div>
+      <div class="kpi-info"><div class="kpi-value" id="kpi-repasse" style="font-size:.9rem">—</div><div class="kpi-label">Repasse Federal</div></div>
     </div>
     <div class="kpi-card orange">
       <div class="kpi-icon orange"><i class="fas fa-chart-line"></i></div>
-      <div class="kpi-info"><div class="kpi-value" id="kpi-executado" style="font-size:.95rem">—</div><div class="kpi-label">Total Executado</div><div class="kpi-sub font-semibold" id="kpi-perc">—</div></div>
+      <div class="kpi-info"><div class="kpi-value" id="kpi-executado" style="font-size:.9rem">—</div><div class="kpi-label">Total Executado</div><div class="kpi-sub font-semibold" id="kpi-perc">—</div></div>
     </div>
     <div class="kpi-card purple">
       <div class="kpi-icon purple"><i class="fas fa-users"></i></div>
-      <div class="kpi-info"><div class="kpi-value" id="kpi-beneficiarios" style="font-size:.9rem">—</div><div class="kpi-label">Beneficiários</div></div>
+      <div class="kpi-info"><div class="kpi-value" id="kpi-beneficiarios" style="font-size:.85rem">—</div><div class="kpi-label">Beneficiários</div></div>
     </div>
     <div class="kpi-card red">
       <div class="kpi-icon red"><i class="fas fa-clock"></i></div>
-      <div class="kpi-info"><div class="kpi-value" id="kpi-apagar" style="font-size:.95rem">—</div><div class="kpi-label">A Pagar</div></div>
+      <div class="kpi-info"><div class="kpi-value" id="kpi-apagar" style="font-size:.9rem">—</div><div class="kpi-label">A Pagar</div></div>
     </div>
   </div>
 
-  <!-- Barra global -->
+  <!-- Barra global + mini stats -->
   <div class="card card-accent-blue mb-3">
-    <div class="card-body" style="padding:16px 20px;">
+    <div class="card-body" style="padding:16px 20px 12px;">
       <div class="flex justify-between mb-1">
-        <span class="text-sm font-semibold">Execução Financeira Global</span>
+        <span class="text-sm font-semibold"><i class="fas fa-chart-line text-primary" style="margin-right:6px;"></i>Execução Financeira Global</span>
         <span class="text-sm font-semibold text-primary" id="dash-global-pct">0%</span>
       </div>
-      <div class="progress-bar-wrap" style="height:12px;">
-        <div class="progress-bar-fill" id="dash-bar-global" style="width:0%"></div>
+      <div class="progress-bar-wrap" style="height:12px;border-radius:8px;">
+        <div class="progress-bar-fill" id="dash-bar-global" style="width:0%;transition:width .8s ease;"></div>
       </div>
-      <div class="flex justify-between mt-1">
+      <div class="flex justify-between mt-1 mb-3">
         <span class="text-xs text-muted" id="dash-global-exec">Executado: —</span>
         <span class="text-xs text-muted" id="dash-global-total">Total Repasse: —</span>
+      </div>
+      <!-- Mini stats rápidas -->
+      <div id="dash-mini-stats">
+        <div class="dash-mini-stats-grid">
+          <div class="dash-mini-stat"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted)"></i> <span>Carregando...</span></div>
+        </div>
       </div>
     </div>
   </div>
@@ -141,7 +341,9 @@
   <!-- Gráficos principais -->
   <div class="grid-2 mb-3">
     <div class="card card-accent-blue">
-      <div class="card-header"><h3><i class="fas fa-chart-bar text-primary"></i> Execução por Projeto</h3></div>
+      <div class="card-header"><h3><i class="fas fa-chart-bar text-primary"></i> Execução por Projeto</h3>
+        <span class="text-xs text-muted">Verde = em dia · Amarelo = atenção · Vermelho = crítico</span>
+      </div>
       <div class="card-body chart-container" style="height:280px;"><canvas id="chartFinanceiro"></canvas></div>
     </div>
     <div class="card">
@@ -151,17 +353,17 @@
   </div>
   <div class="grid-2 mb-3">
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-chart-line text-primary"></i> Despesas Mensais (Global)</h3></div>
+      <div class="card-header"><h3><i class="fas fa-chart-bar text-primary"></i> Despesas Mensais + Acumulado</h3></div>
       <div class="card-body chart-container" style="height:240px;"><canvas id="chartMensalGlobal"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-chart-bar text-primary"></i> Gastos por Categoria</h3></div>
+      <div class="card-header"><h3><i class="fas fa-th-list text-primary"></i> Gastos por Categoria</h3></div>
       <div class="card-body chart-container" style="height:240px;"><canvas id="chartCategorias"></canvas></div>
     </div>
   </div>
 
   <!-- Resumo projetos + alertas -->
-  <div class="grid-2 mb-3" style="grid-template-columns:5fr 2fr;">
+  <div class="grid-2 mb-3" style="grid-template-columns:3fr 2fr;">
     <div class="card">
       <div class="card-header">
         <h3><i class="fas fa-table text-primary"></i> Resumo dos Projetos</h3>
@@ -172,18 +374,62 @@
           <thead>
             <tr>
               <th>Projeto</th><th>Status</th><th class="text-right">Repasse</th>
-              <th class="text-right">Executado</th><th>Exec.</th><th>Benef.</th><th></th>
+              <th class="text-right">Executado</th><th>Exec.</th><th>Benef.</th><th>A Pagar</th><th></th>
             </tr>
           </thead>
           <tbody id="dash-projetos-recentes">
-            <tr><td colspan="7"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
+            <tr><td colspan="8"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
           </tbody>
         </table>
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-bell text-warning"></i> Alertas</h3></div>
-      <div class="card-body" id="dash-alertas">
+      <div class="card-header"><h3><i class="fas fa-bell text-warning"></i> Alertas Inteligentes</h3></div>
+      <div class="card-body" id="dash-alertas" style="padding:12px;max-height:380px;overflow-y:auto;">
+        <div class="loading-spinner"><i class="fas fa-spinner"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score de Conformidade + Timeline -->
+  <div class="grid-2 mb-3" style="grid-template-columns:2fr 3fr;">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-shield-alt text-primary"></i> Score de Conformidade</h3>
+        <span class="text-xs text-muted">8 critérios</span>
+      </div>
+      <div class="card-body" id="dash-conformidade" style="padding:16px;">
+        <div class="loading-spinner"><i class="fas fa-spinner"></i></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-stream text-primary"></i> Linha do Tempo dos Projetos</h3>
+        <span class="text-xs text-muted"><i class="fas fa-circle" style="color:#e53e3e;font-size:.5rem;"></i> hoje</span>
+      </div>
+      <div class="card-body" id="dash-timeline" style="padding:16px;">
+        <div class="loading-spinner"><i class="fas fa-spinner"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heatmap + Top Fornecedores -->
+  <div class="grid-2 mb-3" style="grid-template-columns:3fr 2fr;">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-th text-primary"></i> Heatmap de Despesas (Projeto × Mês)</h3>
+        <span class="text-xs text-muted">Últimos 12 meses</span>
+      </div>
+      <div class="card-body" id="dash-heatmap" style="padding:12px 16px;">
+        <div class="loading-spinner"><i class="fas fa-spinner"></i></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-building text-primary"></i> Top Fornecedores</h3>
+        <span class="text-xs text-muted">por valor executado</span>
+      </div>
+      <div class="card-body" id="dash-top-fornecedores" style="padding:12px 16px;max-height:340px;overflow-y:auto;">
         <div class="loading-spinner"><i class="fas fa-spinner"></i></div>
       </div>
     </div>
@@ -244,6 +490,17 @@
     <div class="card">
       <div class="card-header"><h3><i class="fas fa-chart-pie text-primary"></i> Fonte dos Recursos</h3></div>
       <div class="card-body chart-container" style="height:220px;"><canvas id="chartFonte"></canvas></div>
+    </div>
+  </div>
+  <!-- Gráficos linha 2 -->
+  <div class="grid-2 mb-3">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-building text-primary"></i> Top Fornecedores</h3></div>
+      <div class="card-body chart-container" style="height:220px;"><canvas id="chartTopFornecedores"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-tasks text-primary"></i> Status de Pagamento</h3></div>
+      <div class="card-body chart-container" style="height:220px;"><canvas id="chartStatusPagamento"></canvas></div>
     </div>
   </div>
 
@@ -375,18 +632,29 @@
      PRESTAÇÃO DE CONTAS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <section class="page" id="page-prestacao">
-  <div class="card card-accent-purple mb-3">
-    <div class="card-body" style="padding:18px 20px;">
-      <div class="flex items-center gap-3" style="flex-wrap:wrap;">
+  <!-- Header de seleção de projeto -->
+  <div class="card mb-3" style="border:none;background:linear-gradient(135deg,#0c1426 0%,#1a3a6b 60%,#0c7c59 100%);border-radius:var(--radius-2xl);overflow:hidden;">
+    <div class="card-body" style="padding:24px 28px;">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
         <div style="flex:1;min-width:260px;">
-          <label class="form-label">Selecione o Projeto para gerar o relatório</label>
-          <select class="form-control" id="prest-select-projeto" onchange="loadPrestacao()">
-            <option value="">— Selecione o Projeto —</option>
+          <label class="form-label" style="color:rgba(255,255,255,.75);font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;">
+            <i class="fas fa-folder-open"></i> Selecione o Projeto
+          </label>
+          <select class="form-control" id="prest-select-projeto" onchange="loadPrestacao()"
+            style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-weight:600;">
+            <option value="">— Selecione para gerar o Relatório Oficial —</option>
           </select>
         </div>
-        <div class="flex gap-2" style="padding-top:18px;">
-          <button class="btn btn-primary" onclick="loadPrestacao()"><i class="fas fa-sync-alt"></i> Gerar Relatório</button>
-          <button class="btn btn-outline" onclick="printPrestacao()"><i class="fas fa-print"></i> Imprimir / PDF</button>
+        <div style="display:flex;gap:10px;padding-top:20px;flex-wrap:wrap;">
+          <button class="btn" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;" onclick="loadPrestacao()">
+            <i class="fas fa-sync-alt"></i> Atualizar
+          </button>
+          <button class="btn btn-primary" onclick="printPrestacao()" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);">
+            <i class="fas fa-file-pdf"></i> Gerar PDF
+          </button>
+          <button class="btn" style="background:rgba(5,150,105,.3);border:1px solid rgba(5,150,105,.4);color:#6ee7b7;" onclick="exportPrestacaoExcel()">
+            <i class="fas fa-file-excel"></i> Excel
+          </button>
         </div>
       </div>
     </div>
@@ -443,6 +711,9 @@
     </select>
     <input type="month" class="form-control" id="doc-filter-mes" onchange="filterDocumentos()" title="Filtrar por mês de referência">
     <button class="btn btn-outline btn-sm" onclick="exportarDocumentosCSV()"><i class="fas fa-download"></i> CSV</button>
+    <button class="btn btn-outline btn-sm" id="btn-doc-view-toggle" onclick="toggleDocViewMode()" title="Ver como galeria">
+      <i class="fas fa-th"></i> Galeria
+    </button>
   </div>
 
   <!-- Tabela principal -->
@@ -1067,12 +1338,17 @@
               <p style="font-size:.75rem;color:var(--text-muted);">PDF, JPG, PNG — máx. 5 MB</p>
             </div>
             <div id="nf-preview-area" style="display:none;"></div>
+            <!-- Spinner de upload (FASE 2) -->
+            <div id="nf-upload-spinner" style="display:none;padding:20px;text-align:center;">
+              <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--primary);"></i>
+              <p style="font-size:.8rem;margin-top:8px;color:var(--text-muted);">Enviando para Storage...</p>
+            </div>
           </div>
 
           <!-- Input file oculto -->
           <input type="file" id="nf-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="nfFileSelected(this)">
 
-          <!-- Campo oculto que armazena o base64 para enviar ao Supabase -->
+          <!-- Campo oculto que armazena a URL do Supabase Storage -->
           <input type="hidden" name="nf_url" id="nf-url-hidden">
 
           <!-- Botão remover -->
@@ -1750,6 +2026,16 @@
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS
 ═══════════════════════════════════════════════════════ -->
+</div><!-- /app-shell -->
+
+<!-- PWA Install Banner -->
+<div id="pwa-install-bar">
+  <i class="fas fa-download"></i>
+  Instalar ONG Gestor como app
+  <button onclick="installPWA()">Instalar</button>
+  <button onclick="this.parentElement.classList.remove('show')" style="background:rgba(255,255,255,.1);">✕</button>
+</div>
+
 <script src="js/api.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/projetos.js"></script>

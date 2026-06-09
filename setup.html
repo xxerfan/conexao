@@ -94,8 +94,9 @@
 
 <script>
 const SUPABASE_URL = "https://twzzchsxuaiashmwozdz.supabase.co/rest/v1";
-const SUPABASE_KEY = "sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B";
-const MGMT_URL = "https://twzzchsxuaiashmwozdz.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3enpjaHN4dWFpYXNobXdvemR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODkxMzgsImV4cCI6MjA5NTQ2NTEzOH0.0LclUOMKXYcRB787gPq6K_MavBxIsGAIkdNyK568eOc";
+const MGMT_URL   = "https://twzzchsxuaiashmwozdz.supabase.co";
+const AUTH_URL   = "https://twzzchsxuaiashmwozdz.supabase.co/auth/v1";
 
 const HDR = {
   'Content-Type': 'application/json',
@@ -144,20 +145,23 @@ async function runSetup() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configurando...';
   document.getElementById('log').innerHTML = '';
 
-  /* STEP 0: Conectividade */
+  /* STEP 0: Conectividade — usa /auth/v1/settings (sempre retorna 200 para chave anon válida) */
   setStep(0,'loading','Testando conexão...');
   log('Verificando conexão com Supabase...','log-info');
   try {
-    const r = await sbGet('ong_projetos');
-    if (r.status === 404 || r.status === 200 || r.status === 406) {
-      setStep(0,'ok','Conexão OK');
-      log('Conexão estabelecida com sucesso','log-ok');
+    const r = await fetch(`${AUTH_URL}/settings`, {
+      headers: { 'apikey': SUPABASE_KEY }
+    });
+    if (r.status === 200) {
+      setStep(0,'ok','Conexão OK — Auth API respondeu HTTP 200');
+      log('✅ Conexão estabelecida com sucesso (Auth API OK)','log-ok');
     } else {
-      throw new Error('HTTP ' + r.status);
+      throw new Error('HTTP ' + r.status + ' — Verifique a URL e a chave API');
     }
   } catch(e) {
     setStep(0,'error','Falha na conexão: '+e.message);
     log('ERRO de conexão: '+e.message,'log-err');
+    log('Dica: Verifique se a URL e a chave Anon estão corretas no arquivo.','log-info');
     btn.disabled=false; btn.innerHTML='<i class="fas fa-redo"></i> Tentar Novamente';
     return;
   }
