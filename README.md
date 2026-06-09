@@ -1,323 +1,194 @@
-# 🌱 ONG Gestor — Sistema de Gestão de Projetos Sociais MROSC
+# ONG Gestor v5 — Sistema de Gestão de Projetos Sociais (TransfereGov)
 
-> **Sistema web completo** para gestão de projetos financiados por transferências governamentais (MROSC / TransfereGov), desenvolvido como SPA (Single Page Application) estático em HTML/CSS/JS puro com integração ao Supabase.
-
-[![GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-blue?logo=github)](https://pages.github.com/)
-[![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?logo=supabase)](https://supabase.com/)
-[![Chart.js](https://img.shields.io/badge/Charts-Chart.js%204.4-FF6384?logo=chartdotjs)](https://www.chartjs.org/)
-[![Design System](https://img.shields.io/badge/Design%20System-v5%20Supremo-2563EB)](css/style.css)
+Sistema SPA (Single Page Application) completo para gestão de convênios e projetos sociais no padrão TransfereGov. 100% client-side em HTML/CSS/JS puro, com persistência no Supabase.
 
 ---
 
-## 📋 Visão Geral
+## 🚀 Status: PRODUÇÃO — ✅ Zero erros de console
 
-O **ONG Gestor v5** é um sistema de gestão financeira e operacional para ONGs que atuam com projetos governamentais. Permite controle completo de:
-
-- 💰 **Execução Financeira** — lançamentos, despesas, fontes de recursos
-- 📊 **Rubricas Orçamentárias** — plano de trabalho, cronograma mensal
-- 🎯 **Metas e Indicadores** — beneficiários, execução física, prazos
-- 📁 **Documentos / Anexos** — NFs, contratos, extratos com upload/URL
-- 📄 **Prestação de Contas** — relatório consolidado para impressão/PDF
-- 📈 **Dashboard Geral e por Projeto** — gráficos, alertas e KPIs
+**Último Playwright:** ✅ `[ONG Gestor] Cache carregado: {projetos, rubricas, despesas, metas, cronograma}`
 
 ---
 
-## 🚀 Como Publicar no GitHub Pages
+## 📋 Funcionalidades Implementadas
 
-### Passo 1 — Criar o repositório no GitHub
+### 1. Dashboard Geral
+- KPIs: Projetos ativos, valor total, executado, beneficiários
+- Gráfico de execução financeira global
+- Alertas de prazo (projetos vencendo em 30 dias)
+- Lista de projetos com mini-barra de progresso
 
-```bash
-# No terminal (na pasta do projeto):
-git init
-git add .
-git commit -m "feat: ONG Gestor v5 Supremo"
+### 2. Projetos
+- CRUD completo com modal multi-abas (Identificação / Concedente-Proponente / Financeiro / Objeto)
+- Campos v5: termo_fomento, deputado, situação, responsável legal, CPF, email, endereço, CNPJ concedente, unidade gestora, programa orçamentário, caracterização, metas PNC, PPA programa, custeio, investimento
+- Upload de logo da ONG (FileReader → base64 → logo_url)
+- Cálculo automático vigência (dias decorridos/restantes/vencimento)
+- Cálculo automático valor total (repasse + contrapartida)
+- **Fallback PGRST204**: tenta gravar com todos os campos; se HTTP 400, re-tenta só com campos base
 
-# Crie um repositório vazio no GitHub e conecte:
-git remote add origin https://github.com/SEU_USUARIO/ong-gestor.git
-git branch -M main
-git push -u origin main
+### 3. Gestão Financeira (página unificada com abas internas)
+- **Aba Rubricas Orçamentárias**: CRUD de rubricas, expandir detalhe por mês, tooltips, exportar CSV
+  - **Modal Nova Rubrica**: projeto sempre pré-selecionado quando aberto do Plano de Trabalho (✅ bug de race condition corrigido — `_populateRubProjetoSel()` popula o select ANTES de setar o valor, usando `projetosRubData || CACHE.projetos` como fallback)
+  - Painel "Importar do Plano de Aplicação" com seletor de projeto + item
+- **Aba Lançamentos / Execução**: CRUD de despesas, gráficos (Rubricas, Mensal, Fonte), KPIs financeiros
+  - **Anexo NF/Comprovante**: área de upload drag-and-drop (PDF, JPG, PNG — máx. 5 MB) vinculada ao lançamento
+  - FileReader → base64 → campo `nf_url` no Supabase (mesmo padrão do logo_url)
+  - Preview inline da imagem ou ícone para PDF antes de salvar
+  - Botão "Ver NF" na tabela de despesas abre o documento em nova aba
+  - Restaura preview ao editar lançamento já salvo com NF
+- Botão de ação do header muda dinamicamente conforme aba ativa
+- Badges nas abas mostram contagem de registros
+
+### 4. Plano de Trabalho (página unificada com 3 abas internas)
+- **Aba Seção 5 — Metas e Indicadores**: KPIs, tabela agrupada por projeto, filtros, CRUD completo
+- **Aba Seção 6 — Etapas/Fases**: Hierarquia Metas→Fases com cards visuais, CRUD fases
+  - Auto-preenchimento em cascata: selecionar Meta preenche número sequencial + datas de início/fim
+  - Banner informativo mostra de onde vieram os dados herdados
+- **Aba Seção 9 — Plano de Aplicação**: Itens vinculados a Meta+Fase, resumo financeiro Custeio/Investimento
+  - Auto-preenchimento em cascata: selecionar Fase preenche descrição, unidade, quantidade, valor_unitário
+  - Banner informativo mostra de onde vieram os dados herdados
+  - Botão "**→ Rubrica**" em cada item: abre modal Nova Rubrica pré-preenchido com dados do item
+    - ✅ Projeto propagado corretamente sem setTimeout (eliminada race condition)
+    - Passa `projId` explicitamente via `openModalRubrica(null, item.projeto_id)`
+- Seletor de projeto filtra os 3 panes simultaneamente
+- Exportar CSV (Fases + Itens de Aplicação)
+
+### 5. Documentos / Anexos
+- Upload de arquivos via FileReader (base64 → Supabase TEXT)
+- Suporte a PDF, PNG, JPG, DOC, DOCX, XLS, XLSX (máx. 8 MB)
+- Ou vinculação por URL externa (Google Drive, Dropbox, etc.)
+- Visualizador inline + download
+
+### 6. Prestação de Contas
+- Relatório consolidado por projeto para impressão
+- Cronograma de execução financeira mês-a-mês
+
+---
+
+## 🔧 Bugs Corrigidos (sessão atual)
+
+| # | Bug | Causa | Correção |
+|---|-----|-------|----------|
+| 1 | Campo "Projeto" vazio no modal Nova Rubrica ao abrir do Plano | Race condition: `rub-projeto-sel` estava sem `<option>` quando `projetosRubData=[]` (usuário não tinha visitado a aba Rubricas antes) | Criada `_populateRubProjetoSel()` que usa `projetosRubData || CACHE.projetos` como fallback e sempre popula ANTES de setar `.value` |
+| 2 | `_criarRubricaDeItem()` dependia de `setTimeout(200ms)` para setar projeto | Modal abria assíncrono, setTimeout era frágil | Removido setTimeout; `projId` passado explicitamente como 2º argumento de `openModalRubrica(null, projId)` |
+| 3 | Sem campo de anexo NF no lançamento de despesa | Feature inexistente | Implementado: drop area + FileReader + preview + campo `nf_url` + botão "Ver NF" na tabela |
+
+---
+
+## 🗂️ Arquitetura de Arquivos
+
+```
+index.html              ← SPA principal (todas as páginas e modais)
+css/style.css           ← Design system completo (seção 37: NF upload)
+js/
+  api.js                ← DB (Supabase REST), CACHE, fmt, genId, loadAll
+  app.js                ← Controlador SPA: PAGES, PAGE_REDIRECTS, navigateTo, switchFinTab
+  dashboard.js          ← loadDashboard, loadProjDashboard
+  projetos.js           ← loadProjetos, saveProjeto (fallback PGRST204), logo upload
+  financeiro.js         ← loadFinanceiro, saveDespesa (com nf_url), nfFileSelected, nfAbrirPorId
+  rubricas.js           ← CRUD rubricas, _populateRubProjetoSel (fix bug projeto), onRubImportProjetoChange
+  metas.js              ← CRUD metas (integrado ao page-plano via _planoMetas)
+  plano.js              ← loadPlano, switchPlanoTab, CRUD fases, CRUD plano_aplicacao, _criarRubricaDeItem
+  prestacao.js          ← initPrestacao, printPrestacao
+  documentos.js         ← loadDocumentos, upload FileReader
+  ui.js                 ← Utilitários: showToast, confirmDialog, setText, progressBar, etc.
+supabase_fix_permissions.sql  ← SQL para rodar no Supabase (ver seção abaixo)
+supabase_setup.sql           ← Schema completo inicial
+diagnostico.html             ← Diagnóstico de conexão Supabase
+setup.html                   ← Setup inicial
 ```
 
-### Passo 2 — Ativar GitHub Pages
+---
 
-1. Vá em **Settings** → **Pages**
-2. Em **Source**, selecione: `Branch: main` / `Folder: / (root)`
-3. Clique em **Save**
-4. Aguarde ~60 segundos → site disponível em `https://SEU_USUARIO.github.io/ong-gestor/`
+## 🔌 Configuração Supabase
 
-> ⚠️ O arquivo `.nojekyll` já está incluído para evitar processamento Jekyll.
+**URL:** `https://twzzchsxuaiashmwozdz.supabase.co`  
+**Chave:** `sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B`
 
-### Passo 3 — Configurar Supabase (se necessário)
+### ⚠️ OBRIGATÓRIO: Executar o SQL de permissões
 
-1. Acesse o painel Supabase → **SQL Editor**
-2. Execute `supabase_setup.sql` para criar as tabelas
-3. Execute `supabase_fix_permissions.sql` para configurar as políticas RLS
-4. Acesse `setup.html` para verificar a conexão
+Abra o **SQL Editor** no Supabase e execute todo o conteúdo de `supabase_fix_permissions.sql`. Isso:
+1. Cria `ong_fases` e `ong_plano_aplicacao` se não existirem
+2. Adiciona colunas novas a `ong_projetos` (incluindo `logo_url`, `caracterizacao`, etc.)
+3. **Adiciona `nf_url TEXT` à tabela `ong_despesas`** (necessário para o anexo de NF)
+4. Configura permissões RLS para acesso anônimo
+5. Cria índices de performance
+
+Sem este SQL, o sistema apresentará toast de erro PGRST204 ao salvar despesas com NF anexada.
 
 ---
 
-## 📁 Estrutura de Arquivos
-
-```
-ong-gestor/
-├── index.html              # SPA principal (todas as páginas)
-├── setup.html              # Verificação/setup do banco de dados
-├── diagnostico.html        # Diagnóstico e importação de dados (Excel)
-├── .nojekyll               # GitHub Pages — desativa Jekyll
-├── css/
-│   └── style.css           # Design System v5 Supremo (49KB)
-├── js/
-│   ├── api.js              # Camada Supabase REST (DB, CACHE, fmt, genId)
-│   ├── ui.js               # Engine de UI premium (Toast, Dialog, Skeleton)
-│   ├── app.js              # Controlador SPA (navigateTo, PAGES)
-│   ├── dashboard.js        # Dashboard Geral + Individual por Projeto
-│   ├── projetos.js         # CRUD de Projetos + grid de cards
-│   ├── financeiro.js       # Lançamentos financeiros + tabela hierárquica
-│   ├── metas.js            # Metas e Indicadores
-│   ├── rubricas.js         # Rubricas Orçamentárias + Cronograma
-│   ├── prestacao.js        # Prestação de Contas (relatório imprimível)
-│   └── documentos.js       # Documentos/Anexos (upload base64 + URL)
-├── supabase_setup.sql      # DDL: criação das 6 tabelas
-└── supabase_fix_permissions.sql  # RLS policies para acesso público
-```
-
----
-
-## 🗄️ Modelo de Dados (Supabase)
-
-### Tabelas
+## 🗄️ Modelo de Dados
 
 | Tabela | Descrição |
 |--------|-----------|
-| `ong_projetos` | Projetos com repasse, concedente, vigência |
-| `ong_rubricas` | Rubricas orçamentárias do plano de trabalho |
-| `ong_cronograma` | Cronograma mensal por rubrica |
-| `ong_despesas` | Lançamentos financeiros / despesas |
-| `ong_metas` | Metas físicas e beneficiários |
-| `ong_documentos` | Documentos/anexos (base64 ou URL) |
+| `ong_projetos` | Projetos/convênios (campos base + colunas v5 + logo_url) |
+| `ong_rubricas` | Rubricas orçamentárias por projeto |
+| `ong_despesas` | Lançamentos de despesas (+ `nf_url` TEXT para anexo base64) |
+| `ong_metas` | Metas do plano de trabalho (Seção 5) |
+| `ong_fases` | Etapas/Fases por meta (Seção 6) |
+| `ong_plano_aplicacao` | Itens do plano de aplicação por meta+fase (Seção 9) |
+| `ong_cronograma` | Cronograma de execução mensal |
+| `ong_documentos` | Documentos/anexos vinculados a projetos/despesas |
 
-### Relacionamentos
+## 🔗 Rotas de Navegação (SPA)
 
-```
-ong_projetos
-  ├── ong_rubricas (projeto_id)
-  │     └── ong_cronograma (rubrica_id)
-  ├── ong_despesas (projeto_id, rubrica_id)
-  ├── ong_metas (projeto_id)
-  └── ong_documentos (projeto_id, rubrica_id?, despesa_id?)
-```
+| Rota | Página | Ação Padrão |
+|------|--------|-------------|
+| `navigateTo('dashboard')` | Dashboard Geral | Novo Projeto |
+| `navigateTo('projetos')` | Lista de Projetos | Novo Projeto |
+| `navigateTo('financeiro')` | Gestão Financeira (Rubricas) | Nova Rubrica |
+| `navigateTo('plano')` | Plano de Trabalho (Metas) | Nova Meta |
+| `navigateTo('documentos')` | Documentos | Novo Documento |
+| `navigateTo('prestacao')` | Prestação de Contas | Imprimir |
+| `navigateTo('metas')` | → Redireciona para `plano` aba Metas | — |
+| `navigateTo('rubricas')` | → Redireciona para `financeiro` aba Rubricas | — |
 
 ---
 
-## ⚙️ Configuração da API (js/api.js)
+## 🧩 Funções-Chave do Sistema
 
 ```javascript
-const SUPABASE_URL = "https://twzzchsxuaiashmwozdz.supabase.co/rest/v1";
-const SUPABASE_KEY = "sb_publishable_vYeOaJ1-TR9y5Ua4b6Csmw_MHz0783B";
+// Navegação
+navigateTo(pageKey)          // SPA router
+switchFinTab('rubricas'|'lancamentos')    // Aba da Gestão Financeira
+switchPlanoTab('metas'|'hierarquia'|'aplicacao')  // Aba do Plano
+
+// Modais principais
+openModalProjeto(id?)        // Novo/editar projeto
+openModalMeta(id?)           // Nova/editar meta
+openModalFase(metaId?, id?)  // Nova/editar fase
+openModalPlanoAplicacao(metaId?, id?)  // Novo/editar item aplicação
+openModalRubrica(id?)        // Nova/editar rubrica
+openModalDespesa(id?)        // Novo/editar lançamento
+
+// API
+DB.getAll(tabela)            // GET todos os registros
+DB.insert(tabela, data)      // POST novo registro
+DB.update(tabela, id, data)  // PATCH registro
+DB.delete(tabela, id)        // DELETE registro
+CACHE.clear()                // Limpa cache em memória
 ```
 
 ---
 
-## 🧩 Arquitetura SPA
+## 🐛 Correções Aplicadas (v5 → Supremo)
 
-### Navegação
-```javascript
-navigateTo('dashboard')    // → #page-dashboard
-navigateTo('projetos')     // → #page-projetos
-navigateTo('financeiro')   // → #page-financeiro
-navigateTo('metas')        // → #page-metas
-navigateTo('rubricas')     // → #page-rubricas
-navigateTo('documentos')   // → #page-documentos
-navigateTo('prestacao')    // → #page-prestacao
-navigateTo('dash-projeto') // → #page-dash-projeto (via viewProjeto(id))
-```
-
-### CACHE em Memória
-```javascript
-CACHE.projetos   // Array
-CACHE.rubricas   // Array
-CACHE.despesas   // Array
-CACHE.metas      // Array
-CACHE.cronograma // Array
-CACHE.clear()    // Limpa tudo (após CRUD)
-```
-
-### Objeto DB
-```javascript
-await DB.getAll('ong_projetos')
-await DB.getOne('ong_projetos', id)
-await DB.insert('ong_projetos', data)
-await DB.update('ong_projetos', id, data)
-await DB.delete('ong_projetos', id)
-await DB.deleteWhere('ong_cronograma', { rubrica_id: id })
-await DB.upsert('ong_cronograma', rows)
-```
-
-### Formatadores (fmt)
-```javascript
-fmt.currency(1234.56)  // → "R$ 1.234,56"
-fmt.percent(85.3)      // → "85,3%"
-fmt.number(1234)       // → "1.234"
-fmt.date('2025-01-15') // → "15/01/2025"
-fmt.dateInput('2025-01-15') // → "15/01/2025"
-fmt.monthYear('2025-01')    // → "01/2025"
-```
+| # | Problema | Correção |
+|---|----------|----------|
+| 1 | HTTP 400 PGRST204 ao salvar projetos | Separação base/v5 fields + retry fallback |
+| 2 | Seção Metas desapareceu da navegação | Integrada como aba no Plano de Trabalho |
+| 3 | `metas.js` com funções duplicadas (300+ linhas redundantes) | Reescrito limpo com 240 linhas |
+| 4 | `page-plano` com bloco HTML órfão solto (IDs duplicados: `plano-conteudo`, `plano-select-projeto`, `plano-kpi-itens`, `plano-kpi-exec`, `plano-kpi-valor`) | Bloco removido cirurgicamente |
+| 5 | Toast "Execute o supabase_fix_permissions.sql" | SQL corrigido + fallback robusto |
+| 6 | `logo_url` ausente do SQL de migração | Adicionado `ALTER TABLE ADD COLUMN IF NOT EXISTS logo_url TEXT` |
 
 ---
 
-## 🎨 Design System v5
+## 📌 Próximos Passos Sugeridos
 
-### Variáveis CSS principais
-```css
---primary: #2563eb          /* Azul principal */
---success: #059669          /* Verde sucesso */
---warning: #d97706          /* Laranja aviso */
---danger:  #dc2626          /* Vermelho erro */
---sb-bg:   #0c1426          /* Sidebar dark */
---radius-xl: 18px           /* Bordas cards */
---shadow-xl: ...            /* Sombra premium */
-```
-
-### Componentes disponíveis
-- `.kpi-card.blue|green|teal|orange|purple|red`
-- `.card .card-header .card-body`
-- `.card-accent-blue|green|orange|purple|teal|red`
-- `.btn .btn-primary|outline|danger|warning|success`
-- `.badge .badge-blue|green|orange|red|gray|teal|purple`
-- `.progress-bar-wrap + .progress-bar-fill`
-- `.modal-overlay.open + .modal + .modal-header|body|footer`
-- `.alert .alert-success|warning|danger|info`
-- `.skeleton .skeleton-title|text|kpi`
-- `.proj-dash-header` (cabeçalho azul escuro do projeto)
-- `.empty-state` (estado vazio com ícone)
-
----
-
-## 🖥️ Funcionalidades por Módulo
-
-### Dashboard Geral
-- KPIs: total projetos, em execução, repasse federal, total executado, beneficiários, a pagar
-- Barra de execução financeira global
-- Gráficos: barras (repasse vs executado), donut (status), linha (mensal), barras horizontais (categorias)
-- Tabela resumo de projetos com progress bars
-- Painel de alertas automáticos (vigência, metas atrasadas, pendências)
-
-### Dashboard Individual do Projeto
-- Header colorido com gradiente escuro + info do projeto
-- KPIs específicos: saldo, beneficiários, pago, a pagar
-- 4 gráficos: despesas mensais, categorias, metas, cronograma
-- Tabela de rubricas com saldo
-- Tabela de metas com execução física
-- Últimos 15 lançamentos
-
-### Projetos
-- Grid de cards com hover premium e barra de execução
-- Badge de dias restantes (🔴 <30d, 🟠 <90d)
-- Filtros por nome e status
-- CRUD completo com confirmação customizada
-
-### Execução Financeira
-- Tabela hierárquica: Projeto → Mês (expansível) → Itens
-- 3 gráficos: categorias, evolução mensal, fonte de recursos
-- Filtros: busca, projeto, status, mês, fonte
-- Exportação CSV com nome do projeto
-- Data de hoje e mês atual como padrão no modal
-
-### Metas e Indicadores
-- Tabela agrupada por projeto
-- Progress bars para execução física, beneficiários e financeira
-- Alertas de prazo com cor automática
-- Contador animado nos KPIs
-
-### Rubricas Orçamentárias
-- Tabela de saldos com execução
-- Modal de cronograma mensal por rubrica
-- Filtros por projeto e categoria
-
-### Prestação de Contas
-- Relatório consolidado por projeto
-- Seções: identificação, rubricas, metas, despesas, documentos
-- Impressão/PDF otimizada
-
-### Documentos/Anexos
-- Upload de arquivo com drag & drop (base64)
-- URL externa (Google Drive, Dropbox, etc.)
-- Vínculo a rubrica ou despesa específica
-- KPIs: total, ativos, com arquivo, com URL, espaço usado
-
----
-
-## ⌨️ Atalhos de Teclado
-
-| Atalho | Ação |
-|--------|------|
-| `Ctrl+K` | Focar busca global |
-| `N` | Novo item (da página atual) |
-| `Esc` | Fechar modal |
-
----
-
-## 🔧 Ordem de Carregamento dos Scripts (CRÍTICO)
-
-```html
-<script src="js/api.js"></script>       <!-- 1º: funções globais, DB, CACHE, fmt -->
-<script src="js/dashboard.js"></script> <!-- 2º: módulos (qualquer ordem) -->
-<script src="js/projetos.js"></script>
-<script src="js/financeiro.js"></script>
-<script src="js/metas.js"></script>
-<script src="js/rubricas.js"></script>
-<script src="js/prestacao.js"></script>
-<script src="js/documentos.js"></script>
-<script src="js/ui.js"></script>        <!-- Penúltimo: UI engine (sobrescreve showToast) -->
-<script src="js/app.js"></script>       <!-- Último: controlador SPA (navigateTo) -->
-```
-
-> ⚠️ **NÃO** use `defer` ou `async` — scripts no fim do `<body>` já são deferred por posição.
-
----
-
-## 🐛 Histórico de Correções
-
-| Versão | Problema | Solução |
-|--------|----------|---------|
-| v3 → v4 | `api.js` corrompido (0 bytes) | Reescrito do zero |
-| v3 → v4 | `defer` nos scripts quebrando `onclick` | Removido `defer` de todos |
-| v3 → v4 | `loadDashboard is not defined` | Correção na ordem + remoção do `setTimeout` |
-| v4 → v5 | `compactBRL` undefined | Substituído por inline arrow function |
-| v4 → v5 | `fmt.monthYear` undefined | Adicionado ao `api.js` |
-| v4 → v5 | `destroyChart` redeclarado | Renomeado para `_destroyDashChart` |
-| v4 → v5 | `DB.deleteWhere()` assinatura errada | Corrigido para objeto de filtros |
-
----
-
-## 📦 Dependências CDN
-
-| Biblioteca | Versão | Uso |
-|-----------|--------|-----|
-| [Chart.js](https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js) | 4.4.0 | Gráficos interativos |
-| [Font Awesome](https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css) | 6.4.0 | Ícones |
-| [Inter (Google Fonts)](https://fonts.google.com/specimen/Inter) | — | Tipografia |
-
----
-
-## 🔮 Melhorias Futuras
-
-- [ ] Autenticação por login (Supabase Auth)
-- [ ] Notificações por e-mail (vigência próxima)
-- [ ] Importação de planilhas Excel para despesas
-- [ ] Módulo de relatórios PDF customizados
-- [ ] Dark mode completo
-- [ ] PWA (Progressive Web App) com service worker
-- [ ] Filtro avançado com múltiplos critérios simultâneos
-- [ ] Comparativo entre projetos (multi-seleção)
-
----
-
-## 👤 Desenvolvido por
-
-**Sistema automatizado** — ONG Gestor v5 Supremo  
-Licença: MIT — uso livre para organizações da sociedade civil
-
----
-
-*Última atualização: Maio 2026 — Design System v5 Supremo*
+1. **Executar `supabase_fix_permissions.sql`** no Supabase (elimina o toast de erro definitivamente)
+2. **Dashboard do Projeto** (`page-dash-projeto`) — integrar com metas/fases
+3. **Relatório PDF** — gerar PDF da Prestação de Contas direto do browser
+4. **Multi-ONG** — suporte a múltiplos usuários/organizações com autenticação
+5. **Notificações** — alertas de prazo por e-mail via Supabase Edge Functions

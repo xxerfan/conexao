@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
+  <!-- SheetJS para exportação Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -35,15 +37,12 @@
       <i class="fas fa-folder-open"></i><span>Projetos</span>
     </button>
 
-    <div class="nav-section-title">Gestão Financeira</div>
+    <div class="nav-section-title">Execução do Projeto</div>
+    <button class="nav-item" data-page="plano" onclick="navigateTo('plano')">
+      <i class="fas fa-sitemap"></i><span>Plano de Trabalho</span>
+    </button>
     <button class="nav-item" data-page="financeiro" onclick="navigateTo('financeiro')">
-      <i class="fas fa-receipt"></i><span>Execução Financeira</span>
-    </button>
-    <button class="nav-item" data-page="rubricas" onclick="navigateTo('rubricas')">
-      <i class="fas fa-list-check"></i><span>Rubricas / Cronograma</span>
-    </button>
-    <button class="nav-item" data-page="metas" onclick="navigateTo('metas')">
-      <i class="fas fa-bullseye"></i><span>Metas e Indicadores</span>
+      <i class="fas fa-coins"></i><span>Gestão Financeira</span>
     </button>
 
     <div class="nav-section-title">Documentação</div>
@@ -78,6 +77,9 @@
            placeholder="Buscar... (Ctrl+K)" onkeydown="handleGlobalSearch(event)">
   </div>
   <div class="header-actions">
+    <button class="btn-header-action" id="btn-dark-mode" onclick="toggleDarkMode()" title="Alternar modo escuro (D)" style="font-size:.9rem;">
+      <i class="fas fa-moon" id="dark-mode-icon"></i>
+    </button>
     <button class="btn-header-action" id="btn-action-header" onclick="headerActionClick()">
       <i class="fas fa-plus" id="btn-action-icon"></i>
       <span id="btn-action-text">Novo Projeto</span>
@@ -215,9 +217,10 @@
 </section>
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     EXECUÇÃO FINANCEIRA
+     GESTÃO FINANCEIRA (Rubricas + Lançamentos unificados)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <section class="page" id="page-financeiro">
+
   <!-- KPIs Financeiros -->
   <div class="kpi-grid mb-3" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
     <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-dollar-sign"></i></div><div class="kpi-info"><div class="kpi-value" id="fin-kpi-total" style="font-size:1rem">—</div><div class="kpi-label">Total Lançado</div></div></div>
@@ -244,138 +247,129 @@
     </div>
   </div>
 
-  <!-- Filtros -->
-  <div class="filters-bar mb-3" style="flex-wrap:wrap;gap:10px;">
-    <input type="text" class="form-control" id="fin-search" placeholder="Buscar lançamento..." oninput="filterDespesas()" style="min-width:200px;">
-    <select class="form-control" id="fin-filter-projeto" onchange="filterDespesas()" style="min-width:200px;">
-      <option value="">Todos os Projetos</option>
-    </select>
-    <select class="form-control" id="fin-filter-status" onchange="filterDespesas()">
-      <option value="">Todos os Status</option>
-      <option>Pago</option><option>A Pagar</option><option>Contestado</option>
-    </select>
-    <input type="month" class="form-control" id="fin-filter-mes" onchange="filterDespesas()" title="Filtrar por mês">
-    <select class="form-control" id="fin-filter-fonte" onchange="filterDespesas()">
-      <option value="">Todas as Fontes</option>
-      <option>Repasse Federal</option><option>Contrapartida</option>
-    </select>
-    <button class="btn btn-outline btn-sm" onclick="exportarDespesasCSV()"><i class="fas fa-download"></i> CSV</button>
+  <!-- TABS INTERNAS: Rubricas | Lançamentos -->
+  <div class="page-inner-tabs" id="fin-inner-tabs">
+    <div class="page-inner-tab active" id="fin-tab-rubricas" onclick="switchFinTab('rubricas')">
+      <i class="fas fa-tags"></i> Rubricas Orçamentárias
+      <span style="background:var(--primary-light);color:var(--primary);font-size:.7rem;padding:2px 7px;border-radius:10px;margin-left:4px;" id="fin-badge-rubricas">0</span>
+    </div>
+    <div class="page-inner-tab" id="fin-tab-lancamentos" onclick="switchFinTab('lancamentos')">
+      <i class="fas fa-receipt"></i> Lançamentos / Execução
+      <span style="background:var(--primary-light);color:var(--primary);font-size:.7rem;padding:2px 7px;border-radius:10px;margin-left:4px;" id="fin-badge-lancamentos">0</span>
+    </div>
   </div>
 
-  <!-- Tabela com agrupamento Projeto → Mês → Itens -->
-  <div class="card">
-    <div class="card-header">
-      <h3><i class="fas fa-receipt text-primary"></i> Lançamentos por Projeto / Mês</h3>
-      <span class="text-xs text-muted">Clique no mês para expandir os itens individuais</span>
+  <div class="page-inner-body">
+
+    <!-- PANE: RUBRICAS -->
+    <div class="page-inner-pane active" id="fin-pane-rubricas">
+      <div class="flex items-center" style="justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <p class="text-sm text-muted" style="max-width:560px;">
+          <i class="fas fa-info-circle text-primary"></i>
+          Rubricas são as categorias de despesa previstas no plano de trabalho. Defina cada rubrica antes de lançar as despesas.
+        </p>
+        <button class="btn btn-primary btn-sm" onclick="openModalRubrica()">
+          <i class="fas fa-plus"></i> Nova Rubrica
+        </button>
+      </div>
+
+      <!-- Filtros Rubricas -->
+      <div class="filters-bar mb-3" style="flex-wrap:wrap;gap:8px;">
+        <input type="text" class="form-control" id="rub-search" placeholder="Buscar rubrica..." oninput="filterRubricas()" style="min-width:180px;">
+        <select class="form-control" id="rub-filter-projeto" onchange="filterRubricas()" style="min-width:180px;">
+          <option value="">Todos os Projetos</option>
+        </select>
+        <select class="form-control" id="rub-filter-categoria" onchange="filterRubricas()">
+          <option value="">Todas as Categorias</option>
+          <option>Recursos Humanos</option><option>Material de Consumo</option>
+          <option>Serviços de Terceiros</option><option>Equipamentos</option>
+          <option>Diárias</option><option>Passagens</option><option>Outros Custos</option>
+        </select>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="rubricas-table">
+          <thead>
+            <tr>
+              <th style="min-width:200px;">Rubrica</th>
+              <th>Categoria</th>
+              <th class="text-center">Qtd / Un.</th>
+              <th class="text-right">Vlr. Unit.</th>
+              <th class="text-right">Previsto</th>
+              <th class="text-right">Executado</th>
+              <th class="text-right">Saldo</th>
+              <th>% Exec.</th>
+              <th class="text-center">Lançamentos</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="rubricas-tbody">
+            <tr><td colspan="10"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="table-wrapper">
-      <table id="despesas-table">
-        <thead>
-          <tr>
-            <th style="min-width:200px;">Projeto / Mês</th>
-            <th>Descrição</th>
-            <th>Fornecedor</th>
-            <th>Documento</th>
-            <th>Rubrica</th>
-            <th>Fonte</th>
-            <th class="text-right">Valor</th>
-            <th>Pag.</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="despesas-tbody">
-          <tr><td colspan="9"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
-        </tbody>
-      </table>
+
+    <!-- PANE: LANÇAMENTOS -->
+    <div class="page-inner-pane" id="fin-pane-lancamentos">
+      <div class="flex items-center" style="justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <p class="text-sm text-muted" style="max-width:560px;">
+          <i class="fas fa-info-circle text-primary"></i>
+          Registre cada despesa paga ou a pagar, vinculando à rubrica correspondente. Cada lançamento gera comprovante para prestação de contas.
+        </p>
+        <button class="btn btn-primary btn-sm" onclick="openModalDespesa()">
+          <i class="fas fa-plus"></i> Novo Lançamento
+        </button>
+      </div>
+
+      <!-- Filtros Lançamentos -->
+      <div class="filters-bar mb-3" style="flex-wrap:wrap;gap:8px;">
+        <input type="text" class="form-control" id="fin-search" placeholder="Buscar lançamento..." oninput="filterDespesas()" style="min-width:180px;">
+        <select class="form-control" id="fin-filter-projeto" onchange="filterDespesas()" style="min-width:180px;">
+          <option value="">Todos os Projetos</option>
+        </select>
+        <select class="form-control" id="fin-filter-status" onchange="filterDespesas()">
+          <option value="">Todos os Status</option>
+          <option>Pago</option><option>A Pagar</option><option>Contestado</option>
+        </select>
+        <input type="month" class="form-control" id="fin-filter-mes" onchange="filterDespesas()" title="Filtrar por mês">
+        <select class="form-control" id="fin-filter-fonte" onchange="filterDespesas()">
+          <option value="">Todas as Fontes</option>
+          <option>Repasse Federal</option><option>Contrapartida</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="exportarDespesasCSV()"><i class="fas fa-download"></i> CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportarTudoExcel()" title="Exportar todas as abas em Excel (.xlsx)"><i class="fas fa-file-excel" style="color:#16a34a;"></i> Excel</button>
+      </div>
+
+      <!-- Tabela Lançamentos -->
+      <div class="table-wrapper">
+        <table id="despesas-table">
+          <thead>
+            <tr>
+              <th style="min-width:200px;">Projeto / Mês</th>
+              <th>Descrição</th>
+              <th>Fornecedor</th>
+              <th>Documento</th>
+              <th>Rubrica</th>
+              <th>Fonte</th>
+              <th class="text-right">Valor</th>
+              <th>Pag.</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="despesas-tbody">
+            <tr><td colspan="9"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
+
+  </div><!-- /page-inner-body -->
 </section>
 
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     METAS E INDICADORES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-metas">
-  <!-- KPIs Metas -->
-  <div class="kpi-grid mb-3" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
-    <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-bullseye"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-total">—</div><div class="kpi-label">Total de Metas</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-check-double"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-concluidas">—</div><div class="kpi-label">Concluídas</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon orange"><i class="fas fa-spinner"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-andamento">—</div><div class="kpi-label">Em Andamento</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon red"><i class="fas fa-exclamation-triangle"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-atrasadas">—</div><div class="kpi-label">Atrasadas</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon purple"><i class="fas fa-users"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-benef" style="font-size:.95rem">—</div><div class="kpi-label">Beneficiários</div><div class="progress-bar-wrap mt-1" style="height:4px;"><div class="progress-bar-fill green" id="meta-prog-benef" style="width:0%"></div></div></div></div>
-    <div class="kpi-card"><div class="kpi-icon teal"><i class="fas fa-percentage"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-fisico">—</div><div class="kpi-label">Exec. Física Média</div></div></div>
-  </div>
-
-  <!-- Filtros -->
-  <div class="filters-bar mb-3">
-    <input type="text" class="form-control" id="meta-search" placeholder="Buscar meta..." oninput="filterMetas()">
-    <select class="form-control" id="meta-filter-projeto" onchange="filterMetas()">
-      <option value="">Todos os Projetos</option>
-    </select>
-    <select class="form-control" id="meta-filter-status" onchange="filterMetas()">
-      <option value="">Todos os Status</option>
-      <option>Em Andamento</option><option>Concluída</option><option>Atrasada</option><option>Não Iniciada</option>
-    </select>
-  </div>
-
-  <div class="card">
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:50px;">#</th><th>Meta / Indicador</th><th class="text-center">Beneficiários</th>
-            <th>Execução</th><th class="text-right">Financeiro</th><th>Período</th><th>Status</th><th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="metas-tbody">
-          <tr><td colspan="8"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     RUBRICAS ORÇAMENTÁRIAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-rubricas">
-  <!-- Filtros -->
-  <div class="filters-bar mb-3">
-    <input type="text" class="form-control" id="rub-search" placeholder="Buscar rubrica..." oninput="filterRubricas()">
-    <select class="form-control" id="rub-filter-projeto" onchange="filterRubricas()">
-      <option value="">Todos os Projetos</option>
-    </select>
-    <select class="form-control" id="rub-filter-categoria" onchange="filterRubricas()">
-      <option value="">Todas as Categorias</option>
-      <option>Recursos Humanos</option><option>Material de Consumo</option>
-      <option>Serviços de Terceiros</option><option>Equipamentos</option>
-      <option>Diárias</option><option>Passagens</option><option>Outros Custos</option>
-    </select>
-  </div>
-
-  <div class="card">
-    <div class="table-wrapper">
-      <table id="rubricas-table">
-        <thead>
-          <tr>
-            <th style="min-width:200px;">Rubrica</th>
-            <th>Categoria</th>
-            <th class="text-center">Qtd / Un.</th>
-            <th class="text-right">Vlr. Unit.</th>
-            <th class="text-right">Previsto</th>
-            <th class="text-right">Executado</th>
-            <th class="text-right">Saldo</th>
-            <th>% Exec.</th>
-            <th class="text-center">Lançamentos</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="rubricas-tbody">
-          <tr><td colspan="10"><div class="loading-spinner"><i class="fas fa-spinner"></i></div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
+<!-- page-metas e page-rubricas redirecionam silenciosamente para plano/financeiro via app.js -->
+<section class="page" id="page-metas" style="display:none;"></section>
+<section class="page" id="page-rubricas" style="display:none;"></section>
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      PRESTAÇÃO DE CONTAS
@@ -481,6 +475,183 @@
 
 </section>
 
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     PLANO DE TRABALHO (Metas → Fases → Plano de Aplicação)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="page" id="page-plano">
+
+  <!-- KPIs do Plano -->
+  <div class="kpi-grid mb-3" style="grid-template-columns:repeat(auto-fit,minmax(155px,1fr));">
+    <div class="kpi-card blue">
+      <div class="kpi-icon blue"><i class="fas fa-bullseye"></i></div>
+      <div class="kpi-info"><div class="kpi-value" id="plano-kpi-metas">—</div><div class="kpi-label">Metas</div></div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-icon teal"><i class="fas fa-layer-group"></i></div>
+      <div class="kpi-info"><div class="kpi-value" id="plano-kpi-fases">—</div><div class="kpi-label">Etapas / Fases</div></div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon green"><i class="fas fa-check-double"></i></div>
+      <div class="kpi-info"><div class="kpi-value" id="plano-kpi-fases-conc">—</div><div class="kpi-label">Fases Concluídas</div></div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-icon orange"><i class="fas fa-list-alt"></i></div>
+      <div class="kpi-info"><div class="kpi-value" id="plano-kpi-itens">—</div><div class="kpi-label">Itens Plano Aplicação</div></div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-icon purple"><i class="fas fa-coins"></i></div>
+      <div class="kpi-info"><div class="kpi-value" id="plano-kpi-valor" style="font-size:.9rem;">—</div><div class="kpi-label">Valor Previsto Total</div></div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon red"><i class="fas fa-percentage"></i></div>
+      <div class="kpi-info"><div class="kpi-value" id="plano-kpi-exec">—</div><div class="kpi-label">Exec. Física Média</div></div>
+    </div>
+  </div>
+
+  <!-- Seletor de Projeto -->
+  <div class="card card-accent-blue mb-3">
+    <div class="card-body" style="padding:14px 18px;">
+      <div class="flex items-center gap-3" style="flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;">
+          <label class="form-label" style="margin-bottom:4px;">Projeto</label>
+          <select class="form-control" id="plano-select-projeto" onchange="loadPlano()">
+            <option value="">— Selecione o Projeto —</option>
+          </select>
+        </div>
+        <div class="flex gap-2" style="padding-top:18px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="openModalMeta()" id="btn-plano-nova-meta">
+            <i class="fas fa-bullseye"></i> Nova Meta
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="openModalFase()" id="btn-plano-nova-fase">
+            <i class="fas fa-plus"></i> Nova Fase
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="openModalPlanoAplicacao()" id="btn-plano-nova-apl">
+            <i class="fas fa-list-alt"></i> Item Aplicação
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportPlanoCSV()">
+            <i class="fas fa-download"></i> CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS INTERNAS: Metas | Hierarquia | Plano de Aplicação -->
+  <div class="page-inner-tabs" id="plano-inner-tabs">
+    <div class="page-inner-tab active" id="plano-tab-metas" onclick="switchPlanoTab('metas')">
+      <i class="fas fa-bullseye"></i> Seção 5 — Metas e Indicadores
+      <span style="background:var(--primary-light);color:var(--primary);font-size:.7rem;padding:2px 7px;border-radius:10px;margin-left:4px;" id="plano-badge-metas">0</span>
+    </div>
+    <div class="page-inner-tab" id="plano-tab-hierarquia" onclick="switchPlanoTab('hierarquia')">
+      <i class="fas fa-layer-group"></i> Seção 6 — Etapas / Fases
+      <span style="background:var(--primary-light);color:var(--primary);font-size:.7rem;padding:2px 7px;border-radius:10px;margin-left:4px;" id="plano-badge-fases">0</span>
+    </div>
+    <div class="page-inner-tab" id="plano-tab-aplicacao" onclick="switchPlanoTab('aplicacao')">
+      <i class="fas fa-list-alt"></i> Seção 9 — Plano de Aplicação
+      <span style="background:var(--primary-light);color:var(--primary);font-size:.7rem;padding:2px 7px;border-radius:10px;margin-left:4px;" id="plano-badge-itens">0</span>
+    </div>
+  </div>
+
+  <div class="page-inner-body">
+
+    <!-- PANE: METAS -->
+    <div class="page-inner-pane active" id="plano-pane-metas">
+      <div class="flex items-center" style="justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <p class="text-sm text-muted" style="max-width:600px;">
+          <i class="fas fa-info-circle text-primary"></i>
+          As <strong>Metas</strong> são os objetivos mensuráveis do projeto (Seção 5 do TransfereGov). Cada meta deve ter indicador, beneficiários previstos e prazo definidos.
+        </p>
+        <button class="btn btn-primary btn-sm" onclick="openModalMeta()">
+          <i class="fas fa-plus"></i> Nova Meta
+        </button>
+      </div>
+
+      <!-- KPIs de metas -->
+      <div class="kpi-grid mb-3" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));">
+        <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-bullseye"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-total" style="font-size:1.2rem">—</div><div class="kpi-label">Total de Metas</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-check-double"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-concluidas" style="font-size:1.2rem">—</div><div class="kpi-label">Concluídas</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon orange"><i class="fas fa-spinner"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-andamento" style="font-size:1.2rem">—</div><div class="kpi-label">Em Andamento</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon red"><i class="fas fa-exclamation-triangle"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-atrasadas" style="font-size:1.2rem">—</div><div class="kpi-label">Atrasadas</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon purple"><i class="fas fa-users"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-benef" style="font-size:.85rem">—</div><div class="kpi-label">Beneficiários</div><div class="progress-bar-wrap mt-1" style="height:4px;"><div class="progress-bar-fill green" id="meta-prog-benef" style="width:0%"></div></div></div></div>
+        <div class="kpi-card"><div class="kpi-icon teal"><i class="fas fa-percentage"></i></div><div class="kpi-info"><div class="kpi-value" id="meta-kpi-fisico" style="font-size:1.1rem">—</div><div class="kpi-label">Exec. Física Média</div></div></div>
+      </div>
+
+      <!-- Filtros metas -->
+      <div class="filters-bar mb-3" style="flex-wrap:wrap;gap:8px;">
+        <input type="text" class="form-control" id="meta-search" placeholder="Buscar meta..." oninput="filterMetas()" style="min-width:180px;">
+        <select class="form-control" id="meta-filter-projeto" onchange="filterMetas()" style="min-width:180px;">
+          <option value="">Todos os Projetos</option>
+        </select>
+        <select class="form-control" id="meta-filter-status" onchange="filterMetas()">
+          <option value="">Todos os Status</option>
+          <option>Em Andamento</option><option>Concluída</option><option>Atrasada</option><option>Não Iniciada</option>
+        </select>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:50px;">#</th>
+              <th>Meta / Indicador</th>
+              <th class="text-center">Beneficiários</th>
+              <th>Execução Física</th>
+              <th class="text-right">Financeiro</th>
+              <th>Período</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="metas-tbody">
+            <tr><td colspan="8"><div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Selecione um projeto</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANE: HIERARQUIA (Fases dentro de Metas) -->
+    <div class="page-inner-pane" id="plano-pane-hierarquia">
+      <div class="flex items-center" style="justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <p class="text-sm text-muted" style="max-width:600px;">
+          <i class="fas fa-info-circle text-primary"></i>
+          As <strong>Etapas/Fases</strong> detalham como cada meta será executada (Seção 6). Cada fase tem produto, quantidade, período e valor definidos.
+        </p>
+        <button class="btn btn-primary btn-sm" onclick="openModalFase()">
+          <i class="fas fa-plus"></i> Nova Etapa/Fase
+        </button>
+      </div>
+      <!-- Conteúdo renderizado pelo plano.js -->
+      <div id="plano-conteudo">
+        <div class="empty-state">
+          <i class="fas fa-sitemap"></i>
+          <p>Selecione um projeto para visualizar o Plano de Trabalho.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE: PLANO DE APLICAÇÃO -->
+    <div class="page-inner-pane" id="plano-pane-aplicacao">
+      <div class="flex items-center" style="justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <p class="text-sm text-muted" style="max-width:600px;">
+          <i class="fas fa-info-circle text-primary"></i>
+          O <strong>Plano de Aplicação Detalhado</strong> (Seção 9) especifica cada rubrica orçamentária vinculada a Metas e Fases, com quantidade, valor unitário e fonte de recurso.
+        </p>
+        <button class="btn btn-primary btn-sm" onclick="openModalPlanoAplicacao()">
+          <i class="fas fa-plus"></i> Novo Item
+        </button>
+      </div>
+      <div id="plano-aplicacao-conteudo">
+        <div class="empty-state">
+          <i class="fas fa-list-alt"></i>
+          <p>Selecione um projeto para visualizar o Plano de Aplicação.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-inner-body -->
+
+</section>
+
 </main><!-- /main-content -->
 
 <!-- ═══════════════════════════════════════════════════════
@@ -492,100 +663,314 @@
      MODAL: PROJETO
 ═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-projeto">
-  <div class="modal" style="max-width:780px;">
+  <div class="modal" style="max-width:920px;">
     <div class="modal-header">
-      <h3 id="modal-projeto-title">Novo Projeto</h3>
+      <h3 id="modal-projeto-title"><i class="fas fa-folder-plus text-primary"></i> Novo Projeto</h3>
       <button class="modal-close" onclick="closeModalProjeto()"><i class="fas fa-times"></i></button>
     </div>
-    <div class="modal-body">
-      <form id="form-projeto" onsubmit="return false;">
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Nome do Projeto *</label>
-            <input type="text" class="form-control" name="nome_projeto" required placeholder="Ex: Capacitação em Fitoterapia">
+    <div class="modal-body" style="padding:0;">
+
+      <!-- TABS NAVEGAÇÃO -->
+      <div class="modal-tabs" id="modal-projeto-tabs">
+        <button class="modal-tab active" data-tab="ident" onclick="switchProjetoTab('ident')">
+          <i class="fas fa-id-card"></i> Identificação
+        </button>
+        <button class="modal-tab" data-tab="entidades" onclick="switchProjetoTab('entidades')">
+          <i class="fas fa-building"></i> Concedente / Proponente
+        </button>
+        <button class="modal-tab" data-tab="financeiro" onclick="switchProjetoTab('financeiro')">
+          <i class="fas fa-coins"></i> Valores / Vigência
+        </button>
+        <button class="modal-tab" data-tab="objeto" onclick="switchProjetoTab('objeto')">
+          <i class="fas fa-file-alt"></i> Objeto / Contexto
+        </button>
+      </div>
+
+      <form id="form-projeto" onsubmit="return false;" style="padding:20px 24px 8px;">
+        <!-- ABA 1: IDENTIFICAÇÃO -->
+        <div class="tab-pane active" id="proj-tab-ident">
+          <div class="tab-section-title"><i class="fas fa-hashtag"></i> Dados da Proposta</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Nome do Projeto *
+                <span class="tip-icon" data-tooltip="Nome completo do projeto conforme consta na proposta aprovada no TransfereGov. Ex: &quot;Brasil de Muitas Vozes&quot;">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="nome_projeto" required placeholder="Ex: Brasil de muitas vozes">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Nº Proposta TransfereGov
+                <span class="tip-icon" data-tooltip="Número da proposta cadastrada no sistema TransfereGov do Governo Federal. Formato: 000000/AAAA. Encontre no TransfereGov > Minha Proposta.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="numero_proposta" placeholder="060054/2025">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Nº Termo de Fomento
+                <span class="tip-icon" data-tooltip="Número do instrumento jurídico assinado após aprovação. Ex: 001/2025. Consta no documento do Termo de Fomento ou Convênio.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="termo_fomento" placeholder="Ex: 001/2025">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Item (Emenda / Ação Orç.)
+                <span class="tip-icon" data-tooltip="Código do item de emenda parlamentar ou ação orçamentária. Ex: 20ZF. Encontre na aba Itens do TransfereGov.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="numero_item" placeholder="Ex: 20ZF">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Deputado / Parlamentar
+                <span class="tip-icon" data-tooltip="Nome do parlamentar autor da emenda, se aplicável. Deixe em branco se o recurso for de programação orçamentária direta.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="deputado" placeholder="Nome do parlamentar">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Modalidade
+                <span class="tip-icon" data-tooltip="Tipo do instrumento: Termo de Fomento (atividade de interesse público), Convênio (interesse mútuo) ou Contrato de Repasse (intermediado pela CEF/BB).">ⓘ</span>
+              </label>
+              <select class="form-control" name="modalidade">
+                <option>Termo de Fomento</option>
+                <option>Convênio</option>
+                <option>Termo de Colaboração</option>
+                <option>Contrato de Repasse</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Status Interno
+                <span class="tip-icon" data-tooltip="Status de controle interno da sua organização. Não precisa coincidir com a situação no TransfereGov.">ⓘ</span>
+              </label>
+              <select class="form-control" name="status">
+                <option>Em Execução</option><option>Aguardando Início</option>
+                <option>Prestação de Contas</option><option>Concluído</option><option>Suspenso</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Situação TransfereGov
+                <span class="tip-icon" data-tooltip="Situação oficial da proposta conforme o TransfereGov. Mantenha atualizado para refletir o estado real no sistema federal.">ⓘ</span>
+              </label>
+              <select class="form-control" name="situacao">
+                <option value="">— Selecione —</option>
+                <option>Em Elaboração</option><option>Habilitada</option>
+                <option>Em Análise</option><option>Aprovada</option>
+                <option>Em Execução</option><option>Prestação de Contas</option>
+                <option>Concluída</option><option>Suspensa</option><option>Cancelada</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Município
+                <span class="tip-icon" data-tooltip="Cidade onde as atividades do projeto serão realizadas. Se abrangência estadual ou nacional, informe a sede da ONG.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="municipio" placeholder="Belém">
+            </div>
+            <div class="form-group">
+              <label class="form-label">UF</label>
+              <input type="text" class="form-control" name="uf" maxlength="2" placeholder="PA">
+            </div>
+          </div>
+        </div><!-- /tab-ident -->
+
+        <!-- ABA 2: CONCEDENTE / PROPONENTE -->
+        <div class="tab-pane" id="proj-tab-entidades" style="display:none;">
+          <div class="tab-section-title"><i class="fas fa-university"></i> Seção 1 — Dados do Concedente</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Órgão Concedente
+                <span class="tip-icon" data-tooltip="Ministério ou órgão federal que concedeu o recurso. Ex: Ministério da Cultura, Ministério da Saúde.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="concedente" placeholder="Ex: Ministério da Cultura">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">CNPJ do Concedente
+                <span class="tip-icon" data-tooltip="CNPJ do órgão federal concedente. Consta no cabeçalho do Termo de Fomento assinado.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="cnpj_concedente" placeholder="00.000.000/0001-00">
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Unidade Gestora / Setor
+                <span class="tip-icon" data-tooltip="Secretaria ou departamento responsável pela gestão do convênio dentro do órgão concedente.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="unidade_gestora" placeholder="Ex: Secretaria de Diversidade Cultural">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Programa / Ação Orçamentária
+                <span class="tip-icon" data-tooltip="Código e nome do programa orçamentário ao qual o recurso está vinculado. Consta na proposta e no TransfereGov.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="programa_orcamentario" placeholder="Ex: 5125 — Direito à Cultura">
+            </div>
+          </div>
+          <div class="tab-section-title" style="margin-top:18px;"><i class="fas fa-handshake"></i> Seção 2 — Dados do Proponente (ONG)</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">ONG / Entidade Proponente
+                <span class="tip-icon" data-tooltip="Razão social da organização exatamente como consta no CNPJ e nos documentos do projeto.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="ong_nome" placeholder="Nome da organização">
+            </div>
+            <div class="form-group">
+              <label class="form-label">CNPJ da ONG</label>
+              <input type="text" class="form-control" name="ong_cnpj" placeholder="00.000.000/0001-00">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Responsável Legal
+                <span class="tip-icon" data-tooltip="Nome do representante legal da ONG que assina o Termo de Fomento e os documentos de prestação de contas.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="responsavel_legal" placeholder="Nome do representante">
+            </div>
+            <div class="form-group">
+              <label class="form-label">CPF do Responsável</label>
+              <input type="text" class="form-control" name="cpf_responsavel" placeholder="000.000.000-00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">E-mail de Contato</label>
+              <input type="email" class="form-control" name="email_contato" placeholder="contato@ong.org.br">
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Nº Proposta / Convênio *</label>
-            <input type="text" class="form-control" name="numero_proposta" placeholder="022933/2024">
+            <label class="form-label">Endereço da Entidade</label>
+            <input type="text" class="form-control" name="endereco_ong" placeholder="Rua, nº, bairro, cidade/UF">
           </div>
-        </div>
-        <div class="form-row-3">
+
+          <!-- LOGOMARCA DA ONG -->
+          <div class="tab-section-title" style="margin-top:18px;"><i class="fas fa-image"></i> Logomarca da ONG</div>
+          <div class="logo-upload-area" id="logo-upload-area">
+            <div class="logo-preview-wrap" id="logo-preview-wrap">
+              <img id="logo-preview-img" src="" alt="Logo" style="display:none;max-height:80px;max-width:200px;border-radius:8px;object-fit:contain;">
+              <div id="logo-preview-placeholder">
+                <i class="fas fa-image" style="font-size:2rem;color:var(--gray-300);display:block;margin-bottom:6px;"></i>
+                <span class="text-xs text-muted">Nenhuma logo selecionada</span>
+              </div>
+            </div>
+            <div class="logo-upload-controls">
+              <button type="button" class="btn btn-outline btn-sm" onclick="triggerLogoUpload()">
+                <i class="fas fa-upload"></i> Carregar Imagem
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="clearLogo()" id="btn-clear-logo" style="display:none;">
+                <i class="fas fa-times"></i> Remover
+              </button>
+              <span class="text-xs text-muted" style="display:block;margin-top:4px;">PNG, JPG, SVG · Máx. 500KB · Recomendado: fundo transparente</span>
+            </div>
+          </div>
+          <input type="file" id="logo-file-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none;" onchange="handleLogoUpload(event)">
+          <input type="hidden" name="logo_url" id="logo-url-hidden">
+        </div><!-- /tab-entidades -->
+
+        <!-- ABA 3: VALORES / VIGÊNCIA -->
+        <div class="tab-pane" id="proj-tab-financeiro" style="display:none;">
+          <div class="tab-section-title"><i class="fas fa-coins"></i> Seção 4 — Valores do Projeto</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Repasse Federal (R$) *
+                <span class="tip-icon" data-tooltip="Valor total do recurso federal transferido para a ONG. É o principal componente do projeto. Obrigatório.">ⓘ</span>
+              </label>
+              <input type="number" class="form-control" name="valor_repasse" step="0.01" min="0" placeholder="0,00" oninput="calcProjetoTotais()">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Contrapartida (R$)
+                <span class="tip-icon" data-tooltip="Valor de contrapartida financeira ou em bens/serviços que a ONG aporta. Verifique se há exigência no edital.">ⓘ</span>
+              </label>
+              <input type="number" class="form-control" name="valor_contrapartida" step="0.01" min="0" placeholder="0,00" oninput="calcProjetoTotais()">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Custeio (R$)
+                <span class="tip-icon" data-tooltip="Parcela destinada a despesas correntes / operacionais: contratação de pessoal, materiais de consumo, serviços, diárias etc.">ⓘ</span>
+              </label>
+              <input type="number" class="form-control" name="custeio" step="0.01" min="0" placeholder="0,00" oninput="calcProjetoTotais()">
+              <span class="form-hint">Despesas de operação / funcionamento</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Investimento (R$)
+                <span class="tip-icon" data-tooltip="Parcela destinada à aquisição de bens permanentes: equipamentos, mobiliário, veículos, obras e instalações.">ⓘ</span>
+              </label>
+              <input type="number" class="form-control" name="investimento" step="0.01" min="0" placeholder="0,00" oninput="calcProjetoTotais()">
+              <span class="form-hint">Bens / equipamentos permanentes</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">TOTAL GERAL (R$)
+                <span class="tip-icon" data-tooltip="Calculado automaticamente: Repasse + Contrapartida. Deve coincidir com o valor total da proposta no TransfereGov.">ⓘ</span>
+              </label>
+              <input type="number" class="form-control" name="valor_total" step="0.01" min="0" placeholder="Auto" id="proj-total-geral" style="font-weight:700;background:var(--gray-50);">
+              <span class="form-hint" id="proj-total-hint" style="color:var(--primary);"></span>
+            </div>
+          </div>
+          <div class="tab-section-title" style="margin-top:18px;"><i class="fas fa-calendar-check"></i> Vigência da Proposta</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Vigência Inicial
+                <span class="tip-icon" data-tooltip="Data de início da execução conforme o Termo de Fomento assinado. Antes dessa data, não é possível realizar despesas.">ⓘ</span>
+              </label>
+              <input type="date" class="form-control" name="data_inicio" onchange="calcProjetoVigencia()">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">Vigência Final
+                <span class="tip-icon" data-tooltip="Data limite para execução e prestação de contas. Atenção: após essa data nenhuma despesa é aceita sem prorrogação aprovada.">ⓘ</span>
+              </label>
+              <input type="date" class="form-control" name="data_fim" onchange="calcProjetoVigencia()">
+            </div>
+          </div>
+          <div id="proj-vigencia-info" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;background:var(--gray-50);border-left:3px solid var(--primary);font-size:.82rem;"></div>
+        </div><!-- /tab-financeiro -->
+
+        <!-- ABA 4: OBJETO / CONTEXTO -->
+        <div class="tab-pane" id="proj-tab-objeto" style="display:none;">
+          <div class="tab-section-title"><i class="fas fa-bullhorn"></i> Objeto do Projeto</div>
           <div class="form-group">
-            <label class="form-label">Modalidade</label>
-            <select class="form-control" name="modalidade">
-              <option>Termo de Fomento</option><option>Convênio</option>
-              <option>Termo de Colaboração</option><option>Contrato de Repasse</option>
-            </select>
+            <label class="form-label tooltip-label">Objeto (Descrição Resumida) *
+              <span class="tip-icon" data-tooltip="Síntese do que será executado com o recurso. Deve ser claro e objetivo. Ex: &quot;Realização de oficinas culturais para 200 jovens em Belém/PA.&quot;">ⓘ</span>
+            </label>
+            <textarea class="form-control" name="objeto" rows="4" placeholder="Descreva de forma objetiva o que será realizado com este projeto..."></textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-control" name="status">
-              <option>Em Execução</option><option>Aguardando Início</option>
-              <option>Prestação de Contas</option><option>Concluído</option><option>Suspenso</option>
-            </select>
+            <label class="form-label tooltip-label">Caracterização dos Interesses Recíprocos
+              <span class="tip-icon" data-tooltip="Seção 3 do TransfereGov. Explique como o projeto atende às diretrizes e objetivos do programa governamental e as motivações da ONG.">ⓘ</span>
+            </label>
+            <textarea class="form-control" name="caracterizacao" rows="3" placeholder="Relação com objetivos e diretrizes do programa..."></textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">UF</label>
-            <input type="text" class="form-control" name="uf" maxlength="2" placeholder="PA">
+            <label class="form-label tooltip-label">Público Beneficiário
+              <span class="tip-icon" data-tooltip="Descreva quem será diretamente beneficiado: perfil, localização, quantidade estimada. Ex: 200 mulheres agricultoras do Marajó/PA.">ⓘ</span>
+            </label>
+            <input type="text" class="form-control" name="publico_beneficiario" placeholder="Ex: Mulheres agricultoras, jovens em vulnerabilidade...">
           </div>
-        </div>
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">ONG / Organização</label>
-            <input type="text" class="form-control" name="ong_nome" placeholder="Nome da organização">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label tooltip-label">Metas Plano Nacional de Cultura
+                <span class="tip-icon" data-tooltip="Se o projeto se vincula ao Plano Nacional de Cultura (PNC), indique quais metas são contempladas. Ex: Metas 11, 18 e 19.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="metas_pnc" placeholder="Ex: Metas 11, 18 e 19">
+            </div>
+            <div class="form-group">
+              <label class="form-label tooltip-label">PPA / Programa Orçamentário
+                <span class="tip-icon" data-tooltip="Plano Plurianual e programa ao qual o projeto está vinculado. Consta no sistema SIOP ou no próprio TransfereGov.">ⓘ</span>
+              </label>
+              <input type="text" class="form-control" name="ppa_programa" placeholder="Ex: PPA 24/27 — Programa 5125">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">CNPJ da ONG</label>
-            <input type="text" class="form-control" name="ong_cnpj" placeholder="00.000.000/0001-00">
-          </div>
-        </div>
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Concedente / Órgão</label>
-            <input type="text" class="form-control" name="concedente" placeholder="Ministério / Secretaria">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Município</label>
-            <input type="text" class="form-control" name="municipio" placeholder="Belém">
-          </div>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group">
-            <label class="form-label">Repasse Federal (R$) *</label>
-            <input type="number" class="form-control" name="valor_repasse" step="0.01" min="0" placeholder="0,00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Contrapartida (R$)</label>
-            <input type="number" class="form-control" name="valor_contrapartida" step="0.01" min="0" placeholder="0,00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Total (R$)</label>
-            <input type="number" class="form-control" name="valor_total" step="0.01" min="0" placeholder="Auto">
-          </div>
-        </div>
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Data de Início</label>
-            <input type="date" class="form-control" name="data_inicio">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Data de Término</label>
-            <input type="date" class="form-control" name="data_fim">
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Público Beneficiário</label>
-          <input type="text" class="form-control" name="publico_beneficiario" placeholder="Ex: Mulheres agricultoras, jovens em vulnerabilidade...">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Objeto / Descrição</label>
-          <textarea class="form-control" name="objeto" rows="3" placeholder="Descreva o objeto do projeto..."></textarea>
-        </div>
+        </div><!-- /tab-objeto -->
+
       </form>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModalProjeto()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveProjeto()"><i class="fas fa-save"></i> Salvar Projeto</button>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <div class="flex gap-2">
+        <button class="btn btn-outline btn-sm" id="btn-proj-prev" onclick="prevProjetoTab()" style="display:none;">
+          <i class="fas fa-arrow-left"></i> Anterior
+        </button>
+        <button class="btn btn-outline btn-sm" id="btn-proj-next" onclick="nextProjetoTab()">
+          Próximo <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-outline" onclick="closeModalProjeto()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-salvar-projeto" onclick="saveProjeto()"><i class="fas fa-save"></i> Salvar Projeto</button>
+      </div>
     </div>
   </div>
 </div>
@@ -603,20 +988,26 @@
       <form id="form-despesa" onsubmit="return false;">
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label">Projeto *</label>
+            <label class="form-label tooltip-label">Projeto *
+              <span class="tip-icon" data-tooltip="Selecione o projeto ao qual esta despesa pertence. A lista de rubricas disponíveis será carregada automaticamente.">ⓘ</span>
+            </label>
             <select class="form-control" name="projeto_id" id="desp-projeto" onchange="updateRubricaSelect()" required>
               <option value="">Selecione o Projeto</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Rubrica Orçamentária *</label>
+            <label class="form-label tooltip-label">Rubrica Orçamentária *
+              <span class="tip-icon" data-tooltip="Categoria de despesa prevista no plano de trabalho. Cada gasto deve ser vinculado a uma rubrica específica para a prestação de contas.">ⓘ</span>
+            </label>
             <select class="form-control" name="rubrica_id" id="desp-rubrica" required>
               <option value="">Selecione o Projeto primeiro</option>
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Descrição *</label>
+          <label class="form-label tooltip-label">Descrição *
+            <span class="tip-icon" data-tooltip="Descrição clara do bem ou serviço adquirido. Será exibida na prestação de contas. Ex: &quot;Locação de equipamento de som para oficina&quot;.">ⓘ</span>
+          </label>
           <input type="text" class="form-control" name="descricao" required placeholder="Descreva o lançamento">
         </div>
         <div class="form-row-2">
@@ -625,13 +1016,17 @@
             <input type="text" class="form-control" name="fornecedor" placeholder="Nome do fornecedor">
           </div>
           <div class="form-group">
-            <label class="form-label">CNPJ / CPF</label>
+            <label class="form-label tooltip-label">CNPJ / CPF
+              <span class="tip-icon" data-tooltip="Documento do fornecedor. Obrigatório para prestação de contas. Deve constar na nota fiscal ou recibo.">ⓘ</span>
+            </label>
             <input type="text" class="form-control" name="cnpj_cpf" placeholder="00.000.000/0001-00">
           </div>
         </div>
         <div class="form-row-4">
           <div class="form-group">
-            <label class="form-label">Tipo de Documento</label>
+            <label class="form-label tooltip-label">Tipo de Documento
+              <span class="tip-icon" data-tooltip="Tipo do comprovante fiscal. Prefira NF-e ou NFS-e. Recibos são aceitos para autônomos (CPF). Guarde o original.">ⓘ</span>
+            </label>
             <select class="form-control" name="tipo_documento">
               <option>NF-e</option><option>NFS-e</option><option>Recibo</option>
               <option>CF-e/SAT</option><option>Fatura</option><option>Contrato</option>
@@ -643,13 +1038,47 @@
             <input type="text" class="form-control" name="numero_documento" placeholder="0001">
           </div>
           <div class="form-group">
-            <label class="form-label">Data da Despesa</label>
+            <label class="form-label tooltip-label">Data da Despesa
+              <span class="tip-icon" data-tooltip="Data em que a despesa foi emitida ou realizada. Deve estar dentro do período de vigência do projeto.">ⓘ</span>
+            </label>
             <input type="date" class="form-control" name="data_despesa">
           </div>
           <div class="form-group">
-            <label class="form-label">Mês de Referência</label>
+            <label class="form-label tooltip-label">Mês de Referência
+              <span class="tip-icon" data-tooltip="Mês de competência da despesa (para conciliação com cronograma). Pode ser diferente da data da nota fiscal.">ⓘ</span>
+            </label>
             <input type="month" class="form-control" name="mes_referencia">
           </div>
+        </div>
+
+        <!-- ── Anexo de NF / Comprovante ── -->
+        <div class="nf-upload-section">
+          <label class="form-label tooltip-label">
+            <i class="fas fa-paperclip" style="margin-right:5px;color:var(--primary);"></i>
+            Anexo NF / Comprovante
+            <span class="tip-icon" data-tooltip="Anexe a nota fiscal, recibo ou comprovante em PDF, JPG ou PNG (máx. 5 MB). Fica vinculado a este lançamento para facilitar a prestação de contas.">ⓘ</span>
+          </label>
+
+          <!-- Área de drop / clique -->
+          <div class="nf-drop-area" id="nf-drop-area" onclick="document.getElementById('nf-file-input').click()" ondragover="nfDragOver(event)" ondragleave="nfDragLeave(event)" ondrop="nfDrop(event)">
+            <div id="nf-drop-placeholder">
+              <i class="fas fa-cloud-upload-alt" style="font-size:1.6rem;color:var(--primary-light);"></i>
+              <p style="margin:6px 0 2px;font-weight:600;color:var(--gray-700);">Clique ou arraste o arquivo aqui</p>
+              <p style="font-size:.75rem;color:var(--text-muted);">PDF, JPG, PNG — máx. 5 MB</p>
+            </div>
+            <div id="nf-preview-area" style="display:none;"></div>
+          </div>
+
+          <!-- Input file oculto -->
+          <input type="file" id="nf-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="nfFileSelected(this)">
+
+          <!-- Campo oculto que armazena o base64 para enviar ao Supabase -->
+          <input type="hidden" name="nf_url" id="nf-url-hidden">
+
+          <!-- Botão remover -->
+          <button type="button" class="btn btn-outline btn-xs" id="nf-remove-btn" style="display:none;margin-top:6px;" onclick="nfRemoveAnexo()">
+            <i class="fas fa-trash"></i> Remover anexo
+          </button>
         </div>
         <div class="form-row-3">
           <div class="form-group">
@@ -657,7 +1086,9 @@
             <input type="number" class="form-control" name="valor" step="0.01" min="0" required placeholder="0,00">
           </div>
           <div class="form-group">
-            <label class="form-label">Fonte dos Recursos</label>
+            <label class="form-label tooltip-label">Fonte dos Recursos
+              <span class="tip-icon" data-tooltip="Indique se a despesa é paga com Repasse Federal (recursos do convênio) ou Contrapartida (recursos próprios da ONG).">ⓘ</span>
+            </label>
             <select class="form-control" name="fonte">
               <option>Repasse Federal</option><option>Contrapartida</option>
             </select>
@@ -764,6 +1195,66 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
+     MODAL: PROGRESSO RÁPIDO DA META
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-progresso">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header" style="background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;">
+      <h3 style="color:#fff;"><i class="fas fa-chart-line"></i> Atualizar Progresso</h3>
+      <button class="modal-close" style="color:#fff;" onclick="closeModalProgresso()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" style="background:var(--primary-ultra);border-left:3px solid var(--primary);padding:10px 14px;margin-bottom:16px;font-size:.82rem;">
+        <i class="fas fa-bullseye text-primary"></i>
+        <strong id="prog-meta-titulo" style="color:var(--primary-darker);">Meta</strong>
+      </div>
+
+      <!-- Execução Física com slider -->
+      <div class="form-group mb-3">
+        <label class="form-label font-semibold">
+          <i class="fas fa-running" style="color:var(--primary);"></i> Execução Física
+          <span id="prog-perc-display" style="float:right;font-size:1.1rem;font-weight:700;color:var(--primary);">0%</span>
+        </label>
+        <input type="range" id="prog-perc-fisico" min="0" max="100" step="1" value="0"
+          class="form-control" style="padding:0;height:32px;cursor:pointer;">
+        <div class="flex justify-between" style="font-size:.7rem;color:var(--gray-400);margin-top:2px;">
+          <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+        </div>
+      </div>
+
+      <!-- Beneficiários -->
+      <div class="form-row-2 mb-3">
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-users" style="color:var(--success);"></i> Beneficiários Atendidos</label>
+          <input type="number" class="form-control" id="prog-ben-atendidos" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-users" style="color:var(--gray-400);"></i> Beneficiários Previstos</label>
+          <input type="number" class="form-control" id="prog-ben-previstos" min="0" placeholder="0">
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-traffic-light" style="color:var(--warning);"></i> Status da Meta</label>
+        <select class="form-control" id="prog-status">
+          <option>Em Andamento</option>
+          <option>Concluída</option>
+          <option>Atrasada</option>
+          <option>Não Iniciada</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModalProgresso()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-progresso" onclick="saveProgresso()">
+        <i class="fas fa-save"></i> Salvar Progresso
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
      MODAL: RUBRICA
 ═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-rubrica">
@@ -773,6 +1264,31 @@
       <button class="modal-close" onclick="closeModalRubrica()"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body">
+      <!-- Banner: importar do Plano de Aplicação -->
+      <div id="rub-import-banner" style="display:none;" class="alert alert-success" style="font-size:.8rem;margin-bottom:10px;"></div>
+
+      <!-- Painel de importação do Plano de Aplicação -->
+      <div id="rub-import-panel" class="card card-accent-teal" style="margin-bottom:14px;">
+        <div class="card-body" style="padding:12px 16px;">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div class="font-semibold text-sm" style="color:var(--teal,#0d9488);">
+                <i class="fas fa-magic"></i> Importar do Plano de Aplicação
+              </div>
+              <div class="text-xs text-muted">Preencha automaticamente com um item já cadastrado no Plano de Trabalho</div>
+            </div>
+            <div class="flex gap-2 items-center flex-wrap">
+              <select class="form-control" id="rub-import-projeto-sel" style="min-width:200px;font-size:.82rem;" onchange="onRubImportProjetoChange()">
+                <option value="">Projeto...</option>
+              </select>
+              <select class="form-control" id="rub-import-item-sel" style="min-width:240px;font-size:.82rem;" onchange="onRubImportItemChange()">
+                <option value="">— Selecione o item —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <form id="form-rubrica" onsubmit="return false;">
         <div class="form-row-2">
           <div class="form-group">
@@ -782,7 +1298,9 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Categoria *</label>
+            <label class="form-label tooltip-label">Categoria *
+              <span class="tip-icon" data-tooltip="Grupo de despesa conforme o plano de trabalho. Ex: Recursos Humanos para pagamento de pessoal; Equipamentos para bens permanentes.">ⓘ</span>
+            </label>
             <select class="form-control" name="categoria" required>
               <option>Recursos Humanos</option><option>Material de Consumo</option>
               <option>Serviços de Terceiros</option><option>Equipamentos</option>
@@ -791,24 +1309,34 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Descrição *</label>
+          <label class="form-label tooltip-label">Descrição *
+            <span class="tip-icon" data-tooltip="Nome detalhado da rubrica como consta no plano de trabalho aprovado. Ex: &quot;Coordenador de Projeto — 12 meses&quot;.">ⓘ</span>
+          </label>
           <input type="text" class="form-control" name="descricao" required placeholder="Ex: Coordenador do Projeto">
         </div>
         <div class="form-row-4">
           <div class="form-group">
-            <label class="form-label">Quantidade *</label>
+            <label class="form-label tooltip-label">Quantidade *
+              <span class="tip-icon" data-tooltip="Número de unidades previstas. Ex: 12 (meses), 50 (kits), 1 (notebook).">ⓘ</span>
+            </label>
             <input type="number" class="form-control" name="quantidade" step="0.01" min="0" required placeholder="12">
           </div>
           <div class="form-group">
-            <label class="form-label">Unidade</label>
+            <label class="form-label tooltip-label">Unidade
+              <span class="tip-icon" data-tooltip="Unidade de medida: Mês, Un., Kit, Hora, Diária, m², etc.">ⓘ</span>
+            </label>
             <input type="text" class="form-control" name="unidade" placeholder="Mês, Kit, Un...">
           </div>
           <div class="form-group">
-            <label class="form-label">Valor Unit. (R$) *</label>
+            <label class="form-label tooltip-label">Valor Unit. (R$) *
+              <span class="tip-icon" data-tooltip="Valor de cada unidade. O valor previsto total será calculado: Qtd × Valor Unitário.">ⓘ</span>
+            </label>
             <input type="number" class="form-control" name="valor_unitario" step="0.01" min="0" required placeholder="0,00">
           </div>
           <div class="form-group">
-            <label class="form-label">Valor Previsto (R$)</label>
+            <label class="form-label tooltip-label">Valor Previsto (R$)
+              <span class="tip-icon" data-tooltip="Total aprovado para esta rubrica (Qtd × Vlr. Unitário). Não pode ser ultrapassado sem aditivo ao plano de trabalho.">ⓘ</span>
+            </label>
             <input type="number" class="form-control" name="valor_previsto" step="0.01" min="0" placeholder="Auto">
           </div>
         </div>
@@ -818,7 +1346,9 @@
             <input type="number" class="form-control" name="valor_executado" step="0.01" min="0" placeholder="0,00">
           </div>
           <div class="form-group">
-            <label class="form-label">Fonte</label>
+            <label class="form-label tooltip-label">Fonte
+              <span class="tip-icon" data-tooltip="De onde vem o recurso desta rubrica: Repasse Federal, Contrapartida da ONG, ou Mista (parte de cada).">ⓘ</span>
+            </label>
             <select class="form-control" name="fonte">
               <option>Repasse Federal</option><option>Contrapartida</option><option>Mista</option>
             </select>
@@ -1019,6 +1549,205 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
+     MODAL: FASE / ETAPA (TransfereGov Seção 6)
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-fase">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-header">
+      <h3 id="modal-fase-title"><i class="fas fa-layer-group text-primary"></i> Nova Etapa / Fase</h3>
+      <button class="modal-close" onclick="closeModalFase()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="form-fase" onsubmit="return false;">
+        <!-- Banner de pré-preenchimento -->
+        <div id="fase-prefill-banner" class="alert alert-info" style="display:none;font-size:.8rem;margin-bottom:14px;"></div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Projeto *</label>
+            <select class="form-control" name="projeto_id" id="fase-projeto-sel" required onchange="onFaseProjetoChange()">
+              <option value="">Selecione o Projeto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label tooltip-label">Meta Vinculada *
+              <span class="tip-icon" data-tooltip="Selecione a Meta do plano de trabalho à qual esta fase/etapa está subordinada. Cada meta pode ter múltiplas fases.">ⓘ</span>
+            </label>
+            <select class="form-control" name="meta_id" id="fase-meta-sel" required onchange="onFaseMetaChange()">
+              <option value="">Selecione o Projeto primeiro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Nº da Fase</label>
+            <input type="number" class="form-control" name="numero_fase" min="1" placeholder="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label tooltip-label">Produto / Entrega
+              <span class="tip-icon" data-tooltip="O resultado concreto desta fase: o que será entregue ao final. Ex: Oficinas realizadas, Relatório publicado.">ⓘ</span>
+            </label>
+            <input type="text" class="form-control" name="produto" placeholder="Ex: Oficinas realizadas">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unidade de Medida</label>
+            <input type="text" class="form-control" name="unidade_medida" placeholder="Ex: Unidade, Turma...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label tooltip-label">Descrição da Fase / Etapa *
+            <span class="tip-icon" data-tooltip="Descreva as atividades desta fase: o que será feito, por quem e quando. Corresponde à Seção 6 do TransfereGov.">ⓘ</span>
+          </label>
+          <textarea class="form-control" name="descricao_fase" rows="2" required placeholder="Descreva as atividades desta fase..."></textarea>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Qtd. Prevista</label>
+            <input type="number" class="form-control" name="quantidade_prevista" step="0.01" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Qtd. Realizada</label>
+            <input type="number" class="form-control" name="quantidade_realizada" step="0.01" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor Previsto (R$)</label>
+            <input type="number" class="form-control" name="valor_previsto" step="0.01" min="0" placeholder="0,00">
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Data Início</label>
+            <input type="date" class="form-control" name="data_inicio">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data Fim</label>
+            <input type="date" class="form-control" name="data_fim">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" name="status">
+              <option>Não Iniciada</option>
+              <option>Em Andamento</option>
+              <option>Concluída</option>
+              <option>Atrasada</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModalFase()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-fase" onclick="saveFase()"><i class="fas fa-save"></i> Salvar Fase</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: PLANO DE APLICAÇÃO (Seção 9 — rubrica por meta+fase)
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-plano-aplicacao">
+  <div class="modal" style="max-width:800px;">
+    <div class="modal-header">
+      <h3 id="modal-plano-apl-title"><i class="fas fa-list-alt text-primary"></i> Item do Plano de Aplicação</h3>
+      <button class="modal-close" onclick="closeModalPlanoAplicacao()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="font-size:.8rem;margin-bottom:10px;">
+        <i class="fas fa-info-circle"></i> O <strong>Plano de Aplicação Detalhado</strong> (Seção 9 do TransfereGov) vincula cada despesa a uma Meta e Fase. Selecione a Fase para preencher automaticamente.
+      </div>
+      <!-- Banner de pré-preenchimento da Fase -->
+      <div id="apl-prefill-banner" class="alert alert-success" style="display:none;font-size:.8rem;margin-bottom:10px;"></div>
+      <form id="form-plano-aplicacao" onsubmit="return false;">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Projeto *</label>
+            <select class="form-control" name="projeto_id" id="apl-projeto-sel" required onchange="onAplProjetoChange()">
+              <option value="">Selecione o Projeto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Meta Vinculada *</label>
+            <select class="form-control" name="meta_id" id="apl-meta-sel" required onchange="onAplMetaChange()">
+              <option value="">Selecione o Projeto primeiro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label tooltip-label">Fase / Etapa
+              <span class="tip-icon" data-tooltip="Selecione a Fase para preencher automaticamente: descrição, quantidade e valor são herdados.">ⓘ</span>
+            </label>
+            <select class="form-control" name="fase_id" id="apl-fase-sel" onchange="onAplFaseChange()">
+              <option value="">Selecione a Meta primeiro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Natureza da Despesa</label>
+            <select class="form-control" name="natureza_despesa">
+              <option value="">— Selecione —</option>
+              <option>Custeio</option>
+              <option>Investimento</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição do Item *</label>
+          <input type="text" class="form-control" name="descricao" required placeholder="Ex: Contratação de oficineiro de música">
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Categoria / Rubrica</label>
+            <select class="form-control" name="categoria">
+              <option>Recursos Humanos</option>
+              <option>Material de Consumo</option>
+              <option>Serviços de Terceiros</option>
+              <option>Equipamentos</option>
+              <option>Diárias</option>
+              <option>Passagens</option>
+              <option>Outros Custos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unidade</label>
+            <input type="text" class="form-control" name="unidade" placeholder="Mês, Kit, Un...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fonte dos Recursos</label>
+            <select class="form-control" name="fonte">
+              <option>Repasse Federal</option>
+              <option>Contrapartida</option>
+              <option>Mista</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Quantidade *</label>
+            <input type="number" class="form-control" name="quantidade" step="0.01" min="0" required placeholder="12" oninput="calcAplTotal()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor Unitário (R$) *</label>
+            <input type="number" class="form-control" name="valor_unitario" step="0.01" min="0" required placeholder="0,00" oninput="calcAplTotal()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor Previsto (R$)</label>
+            <input type="number" class="form-control" name="valor_previsto" step="0.01" min="0" placeholder="Auto" id="apl-valor-total" style="font-weight:700;background:var(--gray-50);">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observação</label>
+          <textarea class="form-control" name="observacao" rows="2" placeholder="Informações adicionais..."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModalPlanoAplicacao()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-apl" onclick="savePlanoAplicacao()"><i class="fas fa-save"></i> Salvar Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
      SCRIPTS
 ═══════════════════════════════════════════════════════ -->
 <script src="js/api.js"></script>
@@ -1027,6 +1756,7 @@
 <script src="js/financeiro.js"></script>
 <script src="js/metas.js"></script>
 <script src="js/rubricas.js"></script>
+<script src="js/plano.js"></script>
 <script src="js/prestacao.js"></script>
 <script src="js/documentos.js"></script>
 <script src="js/ui.js"></script>
